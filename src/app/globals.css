@@ -1,0 +1,181 @@
+@import "tailwindcss";
+
+/* =============================================================================
+   1A1 Research Cell — design tokens
+   =============================================================================
+   Two identities have to coexist here without either being subordinated.
+
+   Lahore Grammar School contributes the palette, taken from the school's live
+   stylesheet: #149ddd is the school's working accent, #173b6c its heading
+   navy, #050d18 its darkest ground. Using the school's actual values rather
+   than approximations is what makes the Research Cell read as part of LGS.
+
+   The Research Cell contributes its own register: the logo is a dark-ground
+   lockup (navy field, cyan wordmark, split brain in cyan and coral), so it
+   needs a navy plate behind it and cannot sit on white. That constraint is the
+   source of the "ink" surfaces below — they exist so the Research Cell mark
+   has somewhere to live, and they give the Cell a distinct, more editorial
+   weight inside the LGS palette.
+
+   The coral accent is drawn from the logo's left hemisphere. It is used
+   sparingly and never for primary actions — it marks state (revision
+   requested, pending) where blue would be ambiguous against the brand.
+
+   ---------------------------------------------------------------------------
+   A note on contrast, because it shapes how these tokens may be used.
+
+   The school's working accent #149ddd measures 3.04:1 against white. That is
+   below the 4.5:1 WCAG AA requires for normal text, though it satisfies the
+   3:1 required of non-text UI. So the accent is used for borders, fills,
+   rules, focus rings and large display text — and NOT for small text or for
+   white-on-blue buttons.
+
+   Where small text needs to read as "brand blue", it uses --color-lgs-600
+   (#1f5297, 7.74:1), which is also the school's own — it appears in the same
+   stylesheet. The palette is therefore unchanged; only the assignment of
+   roles within it is disciplined.
+   ============================================================================= */
+
+@theme {
+  /* --- LGS blues ------------------------------------------------------- */
+  --color-lgs-50:  #f5f8fd;
+  --color-lgs-100: #e4edf9;
+  --color-lgs-200: #c3e8fa;
+  --color-lgs-300: #8ed3f2;
+  --color-lgs-400: #37b3ed;   /* school hover state */
+  --color-lgs-500: #149ddd;   /* school primary accent */
+  --color-lgs-600: #1f5297;
+  --color-lgs-700: #173b6c;   /* school heading navy */
+  --color-lgs-800: #122f57;
+  --color-lgs-900: #050d18;
+  --color-lgs-950: #040b14;
+
+  /* --- Research Cell ---------------------------------------------------- */
+  /* Sampled from the logo: the navy field it sits on and its cyan wordmark. */
+  --color-cell-ink:      #1b2a52;
+  --color-cell-ink-deep: #131f3d;
+  --color-cell-cyan:     #12c4f0;
+  --color-cell-coral:    #f2673f;
+  --color-cell-magenta:  #d6316f;
+
+  /* --- Semantic surfaces ------------------------------------------------ */
+  --color-surface:        #ffffff;
+  --color-surface-muted:  #f7f9fc;
+  --color-surface-sunken: #eef3f9;
+  --color-border-subtle:  #dce4ef;
+
+  --color-ink-strong: #12203a;
+  --color-ink-body:   #3c4a60;
+  /* Darkened from the obvious #6b7a90, which measured 4.36:1 on white and
+     4.14:1 on the muted surface — both just under the 4.5:1 needed for normal
+     text. This clears it on both grounds. */
+  --color-ink-muted:  #58657b;
+
+  /* --- Typography -------------------------------------------------------
+     Matching the school's stack: Raleway for headings, Open Sans for body,
+     Poppins for interface furniture. Loaded via next/font in layout.tsx so
+     there is no render-blocking request to Google's servers.               */
+  --font-heading: var(--font-raleway), ui-serif, Georgia, serif;
+  --font-body:    var(--font-open-sans), ui-sans-serif, system-ui, sans-serif;
+  --font-ui:      var(--font-poppins), ui-sans-serif, system-ui, sans-serif;
+
+  /* --- Measure ----------------------------------------------------------
+     Research pages are long-form reading. A capped measure matters more here
+     than on a marketing site.                                              */
+  --container-prose: 68ch;
+}
+
+/* =============================================================================
+   Base
+   ============================================================================= */
+
+@layer base {
+  html {
+    -webkit-text-size-adjust: 100%;
+  }
+
+  body {
+    background-color: var(--color-surface);
+    color: var(--color-ink-body);
+    font-family: var(--font-body);
+    line-height: 1.65;
+    text-rendering: optimizeLegibility;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    color: var(--color-ink-strong);
+    font-family: var(--font-heading);
+    font-weight: 700;
+    line-height: 1.2;
+    text-wrap: balance;
+  }
+
+  /* A single, consistent focus treatment. Visible against both the white
+     public surfaces and the navy Research Cell plate. */
+  :focus-visible {
+    outline: 2px solid var(--color-lgs-500);
+    outline-offset: 2px;
+    border-radius: 2px;
+  }
+
+  .on-ink :focus-visible {
+    outline-color: var(--color-cell-cyan);
+  }
+
+  /* Honour the reader's motion preference. The specification asks for
+     restrained animation; this makes "restrained" mean "none" for anyone who
+     has asked for that. */
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+      scroll-behavior: auto !important;
+    }
+  }
+}
+
+/* =============================================================================
+   Utilities
+   ============================================================================= */
+
+@layer components {
+  /* Skip link: present in the DOM, revealed on keyboard focus. */
+  .skip-link {
+    position: absolute;
+    left: -9999px;
+    top: 0;
+    z-index: 100;
+  }
+
+  .skip-link:focus {
+    left: 1rem;
+    top: 1rem;
+    padding: 0.75rem 1.25rem;
+    background: var(--color-cell-ink);
+    color: white;
+    border-radius: 0.25rem;
+  }
+
+  /* The rule motif used to separate sections. A hairline that thickens at the
+     left, borrowed from the ruled margin of a lab notebook — the "subtle
+     detail inspired by research and archives" the brief asks for, without
+     resorting to decorative illustration. */
+  .rule-notebook {
+    border-top: 1px solid var(--color-border-subtle);
+    position: relative;
+  }
+
+  .rule-notebook::before {
+    content: "";
+    position: absolute;
+    top: -2px;
+    left: 0;
+    width: 3rem;
+    height: 3px;
+    background: var(--color-lgs-500);
+  }
+}

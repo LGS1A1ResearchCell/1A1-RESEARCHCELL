@@ -1,0 +1,57 @@
+# Supabase project configuration.
+#
+# Nothing here identifies a specific Supabase project or account: `project_id`
+# is a local label only, and the linked remote project is recorded in
+# supabase/.temp, which is gitignored. Handover therefore needs no edits to this
+# file -- the school links its own project and pushes the same migrations.
+
+project_id = "lgs-1a1-research-cell"
+
+[api]
+enabled = true
+port = 54321
+schemas = ["public", "storage", "graphql_public"]
+extra_search_path = ["public", "extensions"]
+max_rows = 1000
+
+[db]
+port = 54322
+shadow_port = 54320
+major_version = 17
+
+[studio]
+enabled = true
+port = 54323
+
+# Local mail catcher. No real email is sent in development, and the application
+# does not depend on email for any workflow -- account approval is recorded in
+# the database independently.
+[inbucket]
+enabled = true
+port = 54324
+
+[storage]
+enabled = true
+file_size_limit = "100MiB"
+
+[auth]
+enabled = true
+site_url = "http://localhost:3000"
+additional_redirect_urls = ["http://localhost:3000"]
+jwt_expiry = 3600
+enable_refresh_token_rotation = true
+refresh_token_reuse_interval = 10
+
+# Sign-ups are allowed, but an account is inert until School Administration
+# approves the corresponding account_request. Approval is a database state, not
+# an email state.
+enable_signup = true
+
+[auth.email]
+enable_signup = true
+double_confirm_changes = true
+
+# Off during development: the school's email infrastructure is not yet decided,
+# and no workflow may depend on it. Turn on once the school confirms a mail
+# provider and domain.
+enable_confirmations = false
