@@ -24,10 +24,17 @@ export default async function DashboardLayout({
     ? [
         { href: "/admin", label: "Overview" },
         ...(ctx.isSchoolAdmin
-          ? [{ href: "/admin/accounts", label: "New Student Accounts" }]
+          ? [
+              { href: "/admin/accounts", label: "New Student Accounts" },
+              { href: "/admin/people", label: "People" },
+            ]
           : []),
+        { href: "/profile", label: "My profile" },
       ]
-    : [{ href: "/dashboard", label: "Dashboard" }];
+    : [
+        { href: "/dashboard", label: "Dashboard" },
+        { href: "/profile", label: "My profile" },
+      ];
 
   const roleLabel =
     ctx.role === "school_admin"
