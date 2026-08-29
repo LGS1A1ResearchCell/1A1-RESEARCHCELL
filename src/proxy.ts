@@ -1,28 +1,45 @@
-import type { NextRequest } from "next/server";
+import { NextResponse, type NextRequest } from "next/server";
 import { updateSession } from "@/lib/supabase/session";
 
 /**
- * Keeps the Supabase session fresh on every navigation.
+ * Session refresh and coarse route protection.
  *
- * This is Next 16's `proxy` convention, which replaced `middleware`. It runs
- * before the request reaches a route.
+ * This turns away signed-out visitors at the door. It deliberately does NOT
+ * check roles or account status: doing so would mean a database round trip on
+ * every request, including for public archive pages that need none.
  *
- * Route protection proper is added in the authentication phase and will build
- * on the user returned here. Authorization itself always remains in the
- * database: this decides which page a request may reach, never what the user
- * may read or write once there.
+ * Role and status are checked in the layouts for /dashboard and /admin, which
+ * run on the server for exactly those routes. And neither is the real boundary
+ * — Row Level Security is. This only decides which page someone reaches, never
+ * what data they can read once there.
  */
+
+const PROTECTED = ["/dashboard", "/admin", "/account/inactive"];
+
 export default async function proxy(request: NextRequest) {
-  const { response } = await updateSession(request);
+  const { response, user } = await updateSession(request);
+  const { pathname } = request.nextUrl;
+
+  const needsSession = PROTECTED.some(
+    (p) => pathname === p || pathname.startsWith(`${p}/`),
+  );
+
+  if (needsSession && !user) {
+    const url = request.nextUrl.clone();
+    // Admin routes send people to the admin entry, students to theirs, so the
+    // page they land on matches what they were trying to reach.
+    url.pathname = pathname.startsWith("/admin")
+      ? "/login/admin"
+      : "/login/student";
+    url.searchParams.set("next", pathname);
+    return NextResponse.redirect(url);
+  }
+
   return response;
 }
 
 export const config = {
   matcher: [
-    /*
-     * Every path except static assets and image files, which never carry a
-     * session and would only add latency.
-     */
     "/((?!_next/static|_next/image|favicon.ico|.*\.(?:svg|png|jpg|jpeg|gif|webp|avif|ico|pdf)$).*)",
   ],
 };
