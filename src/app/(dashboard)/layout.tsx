@@ -33,6 +33,8 @@ export default async function DashboardLayout({
       ]
     : [
         { href: "/dashboard", label: "Dashboard" },
+        { href: "/my-research", label: "My research" },
+        { href: "/my-research/new", label: "Submit research" },
         { href: "/profile", label: "My profile" },
       ];
 
