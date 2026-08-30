@@ -23,6 +23,7 @@ export default async function DashboardLayout({
   const nav = ctx.isLeadership
     ? [
         { href: "/admin", label: "Overview" },
+        { href: "/admin/review", label: "Review research" },
         ...(ctx.isSchoolAdmin
           ? [
               { href: "/admin/accounts", label: "New Student Accounts" },

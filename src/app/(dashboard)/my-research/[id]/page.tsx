@@ -8,6 +8,7 @@ import {
   DocumentUpload,
   type Author,
 } from "@/components/research/ProjectWorkspace";
+import { ReviewHistory, type ReviewEntry } from "@/components/review/ReviewHistory";
 import { StatusBadge } from "@/components/research/StatusBadge";
 import { requireActiveAccount } from "@/lib/auth/session";
 import { createClient } from "@/lib/supabase/server";
@@ -57,6 +58,14 @@ export default async function ProjectPage({
         .eq("project_id", id)
         .order("created_at", { ascending: false }),
     ]);
+
+  // Reviewer feedback, visible to the authors of this work only. The rows come
+  // from the review-history view, whose visibility is governed by RLS on
+  // reviews -- this page does no filtering of its own.
+  const { data: reviews } = await supabase
+    .from("research_review_history")
+    .select("review_id, version_number, document_filename, decision, feedback, reviewed_at, reviewer_name")
+    .eq("project_id", id);
 
   const authors: Author[] = (authorRows ?? []).map((a) => ({
     person_id: a.person_id,
@@ -193,6 +202,25 @@ export default async function ProjectPage({
           </ul>
         )}
       </section>
+
+      {/* ---------------------------------------------------------------- */}
+      {/* Reviewer feedback                                                 */}
+      {/* ---------------------------------------------------------------- */}
+      {(reviews ?? []).length > 0 && (
+        <section className="mt-12">
+          <h2 className="font-heading text-lg font-bold text-ink-strong">
+            Reviewer feedback
+          </h2>
+          <p className="mt-1.5 max-w-prose text-sm text-ink-body">
+            {project.status === "revision_required"
+              ? "The Research Cell has asked for changes. Address the feedback below, then upload a new version and resubmit."
+              : "The permanent record of every decision on this submission."}
+          </p>
+          <div className="mt-4">
+            <ReviewHistory entries={(reviews ?? []) as ReviewEntry[]} />
+          </div>
+        </section>
+      )}
 
       {/* ---------------------------------------------------------------- */}
       {/* Versions                                                          */}
