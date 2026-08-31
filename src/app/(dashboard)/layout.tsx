@@ -3,6 +3,7 @@ import Link from "next/link";
 import { Wordmark } from "@/components/brand/Wordmark";
 import { signOut } from "@/lib/auth/actions";
 import { requireActiveAccount } from "@/lib/auth/session";
+import { createClient } from "@/lib/supabase/server";
 
 /**
  * Shell for every signed-in area.
@@ -20,6 +21,19 @@ export default async function DashboardLayout({
 }: Readonly<{ children: React.ReactNode }>) {
   const ctx = await requireActiveAccount();
 
+  // Unread count for the navigation badge. notifications_self_read scopes this
+  // to the caller, so the count is theirs by construction.
+  const supabase = await createClient();
+  const { count: unread } = await supabase
+    .from("notifications")
+    .select("id", { count: "exact", head: true })
+    .is("read_at", null);
+
+  const notificationsItem = {
+    href: "/notifications",
+    label: unread ? `Notifications (${unread})` : "Notifications",
+  };
+
   const nav = ctx.isLeadership
     ? [
         { href: "/admin", label: "Overview" },
@@ -29,14 +43,20 @@ export default async function DashboardLayout({
           ? [
               { href: "/admin/accounts", label: "New Student Accounts" },
               { href: "/admin/people", label: "People" },
+              { href: "/admin/content", label: "Site content" },
+              { href: "/admin/announcements", label: "Announcements" },
+              { href: "/admin/resources", label: "Resources" },
+              { href: "/admin/activity", label: "Activity log" },
             ]
           : []),
+        notificationsItem,
         { href: "/profile", label: "My profile" },
       ]
     : [
         { href: "/dashboard", label: "Dashboard" },
         { href: "/my-research", label: "My research" },
         { href: "/my-research/new", label: "Submit research" },
+        notificationsItem,
         { href: "/profile", label: "My profile" },
       ];
 

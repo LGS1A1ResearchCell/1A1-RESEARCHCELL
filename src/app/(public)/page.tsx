@@ -2,30 +2,37 @@ import Image from "next/image";
 import Link from "next/link";
 
 import researchCellLogo from "@/../public/brand/research-cell-logo.jpg";
+import {
+  getActiveAnnouncements,
+  getSiteContent,
+  settled,
+} from "@/lib/content/site-content";
 
 /**
  * Homepage.
  *
- * The copy below is placeholder and is marked as such in the UI. Every string
- * shown here has a corresponding key in the `site_content` table
- * (site.tagline, home.hero_heading, home.introduction); this page reads them
- * from the database once a Supabase project is connected.
+ * Every string below comes from the editable site_content table, so the school
+ * can change its own wording without a redeployment.
  *
- * The tagline in particular is NOT hard-coded. It is rendered from content and
- * currently shows a visible placeholder, because whether the Research Cell
- * describes itself as scientific or as spanning all disciplines is still an
- * open question for the school.
+ * The tagline is NOT hard-coded, and is omitted entirely rather than guessed
+ * at while it remains a placeholder: whether the Research Cell describes itself
+ * as scientific or as spanning all disciplines is still an open question, and
+ * printing either would settle it by accident.
  */
+export default async function HomePage() {
+  const [c, announcements] = await Promise.all([
+    getSiteContent(),
+    getActiveAnnouncements(),
+  ]);
 
-/** Stand-in for the site_content lookup, replaced in the content phase. */
-const content = {
-  heroHeading: "1A1 Research Cell",
-  tagline: null as string | null,
-  introduction:
-    "The research archive and publication platform of the 1A1 Research Cell at Lahore Grammar School, 1-A-1 branch.",
-};
+  const content = {
+    heroHeading: settled(c["home.hero_heading"]) ?? "1A1 Research Cell",
+    tagline: settled(c["site.tagline"]),
+    introduction:
+      settled(c["home.introduction"]) ??
+      "The research archive and publication platform of the 1A1 Research Cell at Lahore Grammar School, 1-A-1 branch.",
+  };
 
-export default function HomePage() {
   return (
     <>
       {/* ---------------------------------------------------------------- */}
@@ -102,6 +109,39 @@ export default function HomePage() {
           </div>
         </div>
       </section>
+
+      {/* ---------------------------------------------------------------- */}
+      {/* Announcements                                                     */}
+      {/* ---------------------------------------------------------------- */}
+      {/* The read policy enforces the date window, so an announcement stops
+          appearing on its end date without any scheduled job. */}
+      {announcements.length > 0 && (
+        <section
+          aria-labelledby="announcements"
+          className="mx-auto max-w-6xl px-4 pt-12 sm:px-6"
+        >
+          <h2 id="announcements" className="sr-only">
+            Announcements
+          </h2>
+          <ul className="space-y-3">
+            {announcements.map((a) => (
+              <li
+                key={a.id}
+                className="rounded-lg border border-lgs-200 bg-lgs-50 p-5"
+              >
+                <h3 className="font-heading text-lg font-bold text-ink-strong">
+                  {a.title}
+                </h3>
+                {a.body && (
+                  <p className="mt-2 max-w-prose text-sm leading-relaxed text-ink-body">
+                    {a.body}
+                  </p>
+                )}
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
 
       {/* ---------------------------------------------------------------- */}
       {/* Sections                                                          */}
