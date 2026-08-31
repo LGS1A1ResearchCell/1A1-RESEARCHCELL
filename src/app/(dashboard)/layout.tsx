@@ -24,6 +24,7 @@ export default async function DashboardLayout({
     ? [
         { href: "/admin", label: "Overview" },
         { href: "/admin/review", label: "Review research" },
+        { href: "/admin/journals", label: "Journals" },
         ...(ctx.isSchoolAdmin
           ? [
               { href: "/admin/accounts", label: "New Student Accounts" },
