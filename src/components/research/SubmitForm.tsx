@@ -43,6 +43,9 @@ export function SubmitForm({
 }) {
   const [state, action] = useActionState(createResearchProject, initial);
   const [reviewing, setReviewing] = useState(false);
+  // Set when an incomplete form is submitted, so the outstanding items are
+  // announced at that moment rather than only sitting quietly on the page.
+  const [attempted, setAttempted] = useState(false);
   const [values, setValues] = useState({
     title: "",
     research_type: "",
@@ -57,10 +60,12 @@ export function SubmitForm({
   const set = (k: keyof typeof values) => (e: { target: { value: string } }) =>
     setValues((v) => ({ ...v, [k]: e.target.value }));
 
-  const canReview =
-    values.title.trim().length >= 5 &&
-    values.research_type !== "" &&
-    values.authorship_mode !== "";
+  const missing = [
+    values.title.trim().length < 5 ? "a title of at least 5 characters" : null,
+    values.research_type === "" ? "a research type" : null,
+    values.authorship_mode === "" ? "individual or team research" : null,
+  ].filter(Boolean) as string[];
+  const canReview = missing.length === 0;
 
   const subjectName = subjects.find((s) => s.id === values.subject_id)?.name;
 
@@ -148,9 +153,13 @@ export function SubmitForm({
         </label>
         <input
           id="title" value={values.title} onChange={set("title")}
+          aria-invalid={err.title ? true : undefined}
+          aria-describedby={err.title ? "title-error" : undefined}
           className="mt-1.5 w-full rounded border border-border-subtle bg-surface px-3 py-2.5 text-sm text-ink-strong"
         />
-        {err.title && <p className="mt-1 font-ui text-xs text-cell-coral">{err.title}</p>}
+        {err.title && (
+          <p id="title-error" className="mt-1 font-ui text-xs text-cell-coral-text">{err.title}</p>
+        )}
       </div>
 
       <fieldset>
@@ -256,14 +265,41 @@ export function SubmitForm({
         </p>
       </div>
 
-      <button
-        type="button"
-        disabled={!canReview}
-        onClick={() => setReviewing(true)}
-        className="rounded bg-cell-ink px-5 py-2.5 font-ui text-sm font-semibold text-white transition-colors hover:bg-cell-ink-deep disabled:cursor-not-allowed disabled:opacity-50"
-      >
-        Review before creating
-      </button>
+      {/* The button stays enabled and says what is outstanding. Disabling it
+          removed it from the tab order, so a keyboard or screen reader user
+          met a step they could not advance and were told nothing about why. */}
+      <div>
+        <button
+          type="button"
+          aria-describedby={canReview ? undefined : "review-blocked"}
+          onClick={() => {
+            if (canReview) {
+              setReviewing(true);
+              return;
+            }
+            setAttempted(true);
+            const first =
+              values.title.trim().length < 5
+                ? document.getElementById("title")
+                : document.querySelector<HTMLInputElement>(
+                    values.research_type === "" ? "input[name=\"research_type_ui\"]" : "input[name=\"authorship_mode_ui\"]",
+                  );
+            first?.focus();
+          }}
+          className="rounded bg-cell-ink px-5 py-2.5 font-ui text-sm font-semibold text-white transition-colors hover:bg-cell-ink-deep"
+        >
+          Review before creating
+        </button>
+        {!canReview && (
+          <p
+            id="review-blocked"
+            role={attempted ? "alert" : undefined}
+            className="mt-2 font-ui text-xs text-ink-body"
+          >
+            Still needed: {missing.join(", ")}.
+          </p>
+        )}
+      </div>
     </div>
   );
 }

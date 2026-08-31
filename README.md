@@ -7,9 +7,19 @@ The site is two things at once: a public archive of the Research Cell's
 published work, and a private system through which students submit research and
 the Research Cell and school administration review, approve and publish it.
 
-> **Status: in development.** Not deployed, not public, and seeded with
-> placeholder content. Wording marked `[PLACEHOLDER]` is awaiting approved text
-> from the school and has deliberately not been invented.
+> **Status: complete and ready for handover.** Not yet deployed. Seeded with
+> placeholder content — wording marked `[PLACEHOLDER]` is awaiting approved text
+> from the school, has deliberately not been invented, and is omitted from public
+> pages rather than shown to visitors.
+
+## Documentation
+
+| | |
+|---|---|
+| [**docs/HANDOVER.md**](docs/HANDOVER.md) | Full technical handover: architecture, setup, schema, workflows, deployment, ownership transfer, backups, known limitations |
+| [**docs/ADMINISTRATOR-GUIDE.md**](docs/ADMINISTRATOR-GUIDE.md) | For school staff and Research Cell leadership. No technical knowledge assumed |
+
+The rest of this README is a summary; the handover document is the authority.
 
 ---
 
@@ -166,19 +176,14 @@ The project is built to be transferred to school ownership.
 Nothing identifies a personal account. There are no credentials in the
 repository, no hard-coded emails, no hard-coded domain, and no dependency on any
 individual's account. Configuration is entirely in environment variables, and
-`supabase/config.toml` names no specific project.
+`supabase/config.toml` names no specific project. No code changes are required
+at any step of the transfer.
 
-To hand over:
-
-1. Transfer the GitHub repository to the school's organisation.
-2. Create a Supabase project in the school's organisation; run `db:push` and
-   `seed.sql` against it.
-3. Create a Vercel project in the school's team and set the environment
-   variables from `.env.example`.
-4. Point the school's domain at the Vercel deployment and update
-   `NEXT_PUBLIC_SITE_URL`.
-
-No code changes are required at any step.
+**[docs/HANDOVER.md § Ownership transfer](docs/HANDOVER.md#13-ownership-transfer)**
+has the full procedure for GitHub, Supabase and Vercel, including the steps that
+are easy to miss — environment variables do not transfer with a Vercel project,
+and the database password and service-role key should be rotated once the school
+holds the account.
 
 ---
 

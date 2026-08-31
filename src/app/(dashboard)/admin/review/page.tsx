@@ -64,7 +64,7 @@ function QueueSection({
                     </h3>
                     <p className="mt-1 font-ui text-xs text-ink-muted">{p.meta}</p>
                     {p.barred && (
-                      <p className="mt-1.5 font-ui text-xs font-medium text-cell-coral">
+                      <p className="mt-1.5 font-ui text-xs font-medium text-cell-coral-text">
                         You are an author &mdash; someone else must review this
                       </p>
                     )}

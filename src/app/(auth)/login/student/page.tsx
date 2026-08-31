@@ -37,7 +37,7 @@ export default async function StudentLoginPage() {
         </p>
         <Link
           href="/login/student/sign-up"
-          className="mt-3 inline-block font-ui text-sm font-semibold text-lgs-600 underline"
+          className="mt-3 inline-block py-1.5 font-ui text-sm font-semibold text-lgs-600 underline"
         >
           Create an account
         </Link>

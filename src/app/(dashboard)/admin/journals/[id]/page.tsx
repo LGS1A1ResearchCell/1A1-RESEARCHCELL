@@ -20,7 +20,7 @@ export const metadata = { title: "Journal builder" };
 
 const STATUS: Record<string, { label: string; tone: string }> = {
   draft: { label: "Draft", tone: "bg-surface-sunken text-ink-muted" },
-  pending_admin_approval: { label: "Awaiting school approval", tone: "bg-cell-coral/10 text-cell-coral" },
+  pending_admin_approval: { label: "Awaiting school approval", tone: "bg-cell-coral/10 text-cell-coral-text" },
   published: { label: "Published", tone: "bg-lgs-200 text-lgs-800" },
 };
 

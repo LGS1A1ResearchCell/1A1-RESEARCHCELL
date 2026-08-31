@@ -49,7 +49,7 @@ export function Wordmark({ compact = false }: { compact?: boolean }) {
             height={16}
             className="block shrink-0"
           />
-          <span className="truncate font-ui text-[11px] leading-tight tracking-wide text-ink-muted uppercase">
+          <span className="truncate font-ui text-xs leading-tight tracking-wide text-ink-muted uppercase">
             Lahore Grammar School 1-A-1
           </span>
         </span>

@@ -172,7 +172,7 @@ export function AnnouncementForm({ row }: { row?: AnnouncementRow }) {
               className="mt-1 w-full rounded border border-border-subtle bg-surface px-3 py-2 text-sm"
             />
           </div>
-          <label className="flex items-center gap-2 pb-2 font-ui text-sm text-ink-body">
+          <label className="flex min-h-11 items-center gap-2 pb-2 font-ui text-sm text-ink-body">
             <input
               type="checkbox"
               name="is_visible"
@@ -199,7 +199,7 @@ export function AnnouncementForm({ row }: { row?: AnnouncementRow }) {
           <input type="hidden" name="announcement_id" value={row.id} />
           <button
             type="submit"
-            className="rounded border border-border-subtle px-3 py-1.5 font-ui text-xs text-ink-body transition-colors hover:border-cell-coral hover:text-cell-coral"
+            className="rounded border border-border-subtle px-3 py-1.5 font-ui text-xs text-ink-body transition-colors hover:border-cell-coral hover:text-cell-coral-text"
           >
             Remove
           </button>
@@ -230,7 +230,7 @@ export function ResourceEditor({ row }: { row: ResourceRow }) {
     <li className="rounded-lg border border-border-subtle bg-surface">
       <div className="flex flex-wrap items-center justify-between gap-3 p-4">
         <div className="min-w-0">
-          <h3 className="font-ui text-sm font-semibold text-ink-strong">{row.title}</h3>
+          <h2 className="font-ui text-sm font-semibold text-ink-strong">{row.title}</h2>
           <p className="font-ui text-xs text-ink-muted">{row.category}</p>
         </div>
         <div className="flex shrink-0 items-center gap-3">
@@ -283,7 +283,7 @@ export function ResourceEditor({ row }: { row: ResourceRow }) {
               className="mt-1 w-full rounded border border-border-subtle bg-surface px-3 py-2 text-sm" />
           </div>
 
-          <label className="mt-4 flex items-center gap-2 font-ui text-sm text-ink-body">
+          <label className="mt-4 flex min-h-11 items-center gap-2 font-ui text-sm text-ink-body">
             <input type="checkbox" name="is_published" defaultChecked={row.is_published} className="h-4 w-4" />
             Publish this on the public Resources page
           </label>

@@ -36,7 +36,7 @@ export default function SubmittedPage() {
 
       <Link
         href="/"
-        className="mt-6 inline-block font-ui text-sm font-semibold text-lgs-600 underline"
+        className="mt-6 inline-block py-1.5 font-ui text-sm font-semibold text-lgs-600 underline"
       >
         Return to the public site
       </Link>

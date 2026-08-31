@@ -86,13 +86,20 @@ export default async function MyResearchPage() {
         </section>
       )}
 
-      <section className="rule-notebook mt-10 pt-8">
+      {/* Named so the list is a labelled region, and so the paper titles below
+          sit at h3 under a real h2 rather than jumping straight from the h1 —
+          the confirmation section above it is conditional and cannot carry
+          that level on its own. */}
+      <section aria-labelledby="submissions" className="rule-notebook mt-10 pt-8">
+        <h2 id="submissions" className="font-heading text-lg font-bold text-ink-strong">
+          Your submissions
+        </h2>
         {list.length === 0 ? (
-          <p className="rounded-lg border border-dashed border-border-subtle bg-surface p-10 text-center text-sm text-ink-muted">
+          <p className="mt-4 rounded-lg border border-dashed border-border-subtle bg-surface p-10 text-center text-sm text-ink-muted">
             You have not submitted any research yet.
           </p>
         ) : (
-          <ul className="divide-y divide-border-subtle overflow-hidden rounded-lg border border-border-subtle bg-surface">
+          <ul className="mt-4 divide-y divide-border-subtle overflow-hidden rounded-lg border border-border-subtle bg-surface">
             {list.map((p) => {
               const mine = (p.research_authors ?? []).find(
                 (a: { person_id: string }) => a.person_id === ctx.personId,

@@ -177,7 +177,7 @@ export function PhotoCropper({
           </p>
 
           {error && (
-            <p role="alert" className="mt-2 font-ui text-xs text-cell-coral">
+            <p role="alert" className="mt-2 font-ui text-xs text-cell-coral-text">
               {error}
             </p>
           )}

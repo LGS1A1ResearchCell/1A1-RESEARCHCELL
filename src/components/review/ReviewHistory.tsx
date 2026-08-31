@@ -60,7 +60,7 @@ export function ReviewHistory({
                   className={`shrink-0 rounded-full px-2.5 py-0.5 font-ui text-xs font-medium ${
                     approved
                       ? "bg-lgs-100 text-lgs-700"
-                      : "bg-cell-coral/10 text-cell-coral"
+                      : "bg-cell-coral/10 text-cell-coral-text"
                   }`}
                 >
                   {approved ? "Approved" : "Revision required"}

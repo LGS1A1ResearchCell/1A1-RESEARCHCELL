@@ -161,7 +161,7 @@ export function PaperManager({
                       <input type="hidden" name="journal_id" value={journalId} />
                       <input type="hidden" name="project_id" value={p.project_id} />
                       <button type="submit"
-                        className="rounded border border-border-subtle px-2.5 py-1 font-ui text-xs text-ink-body hover:border-cell-coral hover:text-cell-coral">
+                        className="rounded border border-border-subtle px-2.5 py-1 font-ui text-xs text-ink-body hover:border-cell-coral hover:text-cell-coral-text">
                         Remove
                       </button>
                     </form>
@@ -265,7 +265,7 @@ export function MastheadManager({
                   <input type="hidden" name="journal_id" value={journalId} />
                   <input type="hidden" name="credit_id" value={c.id} />
                   <button type="submit"
-                    className="rounded border border-border-subtle px-2.5 py-1 font-ui text-xs text-ink-body hover:border-cell-coral hover:text-cell-coral">
+                    className="rounded border border-border-subtle px-2.5 py-1 font-ui text-xs text-ink-body hover:border-cell-coral hover:text-cell-coral-text">
                     Remove
                   </button>
                 </form>

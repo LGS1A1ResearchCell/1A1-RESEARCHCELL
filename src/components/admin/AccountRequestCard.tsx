@@ -25,7 +25,7 @@ function Submit({ label, busy, tone }: { label: string; busy: string; tone: "pri
   const cls =
     tone === "primary"
       ? "bg-cell-ink text-white hover:bg-cell-ink-deep"
-      : "border border-border-subtle text-ink-body hover:border-cell-coral hover:text-cell-coral";
+      : "border border-border-subtle text-ink-body hover:border-cell-coral hover:text-cell-coral-text";
   return (
     <button
       type="submit"
@@ -74,7 +74,7 @@ export function AccountRequestCard({ request }: { request: PendingRequest }) {
               type="button"
               onClick={() => setShowDecline((v) => !v)}
               aria-expanded={showDecline}
-              className="rounded border border-border-subtle px-4 py-2 font-ui text-sm font-semibold text-ink-body transition-colors hover:border-cell-coral hover:text-cell-coral"
+              className="rounded border border-border-subtle px-4 py-2 font-ui text-sm font-semibold text-ink-body transition-colors hover:border-cell-coral hover:text-cell-coral-text"
             >
               Decline
             </button>

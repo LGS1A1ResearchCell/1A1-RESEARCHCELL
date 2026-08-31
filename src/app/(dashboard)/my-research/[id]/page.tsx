@@ -187,7 +187,7 @@ export default async function ProjectPage({
                     a.confirmation_status === "confirmed"
                       ? "bg-lgs-100 text-lgs-700"
                       : a.confirmation_status === "declined"
-                        ? "bg-cell-coral/10 text-cell-coral"
+                        ? "bg-cell-coral/10 text-cell-coral-text"
                         : "bg-surface-sunken text-ink-muted"
                   }`}
                 >

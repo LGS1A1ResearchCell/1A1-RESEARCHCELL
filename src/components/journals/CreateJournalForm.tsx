@@ -57,10 +57,14 @@ export function CreateJournalForm({
             id="nj-title"
             name="title"
             required
+            aria-invalid={err.title ? true : undefined}
+            aria-describedby={err.title ? "nj-title-error" : undefined}
             placeholder="Journal II"
             className="mt-1.5 w-full rounded border border-border-subtle bg-surface px-3 py-2.5 text-sm text-ink-strong"
           />
-          {err.title && <p className="mt-1 font-ui text-xs text-cell-coral">{err.title}</p>}
+          {err.title && (
+            <p id="nj-title-error" className="mt-1 font-ui text-xs text-cell-coral-text">{err.title}</p>
+          )}
         </div>
 
         <div>
@@ -83,6 +87,8 @@ export function CreateJournalForm({
             id="nj-year"
             name="academic_year_id"
             required
+            aria-invalid={err.academic_year_id ? true : undefined}
+            aria-describedby={err.academic_year_id ? "nj-year-error" : undefined}
             defaultValue={years.find((y) => y.is_current)?.id ?? years[0]?.id}
             className="mt-1.5 w-full rounded border border-border-subtle bg-surface px-3 py-2.5 text-sm text-ink-strong"
           >
@@ -94,7 +100,9 @@ export function CreateJournalForm({
             ))}
           </select>
           {err.academic_year_id && (
-            <p className="mt-1 font-ui text-xs text-cell-coral">{err.academic_year_id}</p>
+            <p id="nj-year-error" className="mt-1 font-ui text-xs text-cell-coral-text">
+              {err.academic_year_id}
+            </p>
           )}
         </div>
       </div>

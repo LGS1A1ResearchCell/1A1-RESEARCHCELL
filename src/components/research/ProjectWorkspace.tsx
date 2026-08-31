@@ -144,7 +144,7 @@ export function AuthorManager({
                 a.confirmation_status === "confirmed"
                   ? "bg-lgs-100 text-lgs-700"
                   : a.confirmation_status === "declined"
-                    ? "bg-cell-coral/10 text-cell-coral"
+                    ? "bg-cell-coral/10 text-cell-coral-text"
                     : "bg-surface-sunken text-ink-muted"
               }`}
             >
@@ -160,7 +160,7 @@ export function AuthorManager({
                 <input type="hidden" name="person_id" value={a.person_id} />
                 <button
                   type="submit"
-                  className="rounded border border-border-subtle px-2.5 py-1 font-ui text-xs text-ink-body transition-colors hover:border-cell-coral hover:text-cell-coral"
+                  className="rounded border border-border-subtle px-2.5 py-1 font-ui text-xs text-ink-body transition-colors hover:border-cell-coral hover:text-cell-coral-text"
                 >
                   Remove
                 </button>
@@ -249,7 +249,7 @@ export function ConfirmAuthorship({ projectId }: { projectId: string }) {
           <input type="hidden" name="decision" value="declined" />
           <button
             type="submit"
-            className="rounded border border-border-subtle px-4 py-2 font-ui text-sm font-semibold text-ink-body transition-colors hover:border-cell-coral hover:text-cell-coral"
+            className="rounded border border-border-subtle px-4 py-2 font-ui text-sm font-semibold text-ink-body transition-colors hover:border-cell-coral hover:text-cell-coral-text"
           >
             No, I am not
           </button>

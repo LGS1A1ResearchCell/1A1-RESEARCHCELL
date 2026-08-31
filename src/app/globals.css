@@ -56,6 +56,12 @@
   --color-cell-ink-deep: #131f3d;
   --color-cell-cyan:     #12c4f0;
   --color-cell-coral:    #f2673f;
+  /* The coral above measures 3.09:1 on white and 2.78:1 on its own 10% tint —
+     fine for borders and fills, too low for text, and it was being used for
+     form error messages where legibility matters most. This is the same hue
+     (13 degrees) darkened until it clears 4.5:1 on both grounds: 5.39:1 on
+     white, 4.85:1 on the tint. Same discipline as lgs-500 vs lgs-600. */
+  --color-cell-coral-text: #bf3d18;
   --color-cell-magenta:  #d6316f;
 
   /* --- Semantic surfaces ------------------------------------------------ */

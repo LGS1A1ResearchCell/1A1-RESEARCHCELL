@@ -8,12 +8,20 @@ import { Wordmark } from "@/components/brand/Wordmark";
  * Deliberately stripped of the main navigation: someone signing in has a single
  * task, and the section links are a distraction from it. The wordmark still
  * links home, so this is never a dead end.
+ *
+ * The skip link is here for the same reason it is on the other two layouts:
+ * the header is short, but a keyboard user should not have to tab through
+ * chrome to reach the form they came for.
  */
 export default function AuthLayout({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
   return (
     <div className="flex min-h-dvh flex-col bg-surface-muted">
+      <a href="#main" className="skip-link">
+        Skip to main content
+      </a>
+
       <header className="border-b border-border-subtle bg-surface">
         <div className="mx-auto flex h-16 max-w-6xl items-center px-4 sm:px-6">
           <Wordmark compact />

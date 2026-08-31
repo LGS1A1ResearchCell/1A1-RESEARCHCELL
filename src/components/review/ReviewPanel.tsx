@@ -36,7 +36,7 @@ function Submit({ label, busy, tone }: { label: string; busy: string; tone: "app
       className={`rounded px-5 py-2.5 font-ui text-sm font-semibold transition-colors disabled:cursor-not-allowed disabled:opacity-60 ${
         tone === "approve"
           ? "bg-cell-ink text-white hover:bg-cell-ink-deep"
-          : "border border-cell-coral text-cell-coral hover:bg-cell-coral/5"
+          : "border border-cell-coral text-cell-coral-text hover:bg-cell-coral/5"
       }`}
     >
       {pending ? busy : label}
@@ -160,7 +160,7 @@ export function ReopenPanel({ projectId }: { projectId: string }) {
           <input type="hidden" name="project_id" value={projectId} />
           <button
             type="submit"
-            className="rounded border border-cell-coral px-4 py-2 font-ui text-sm font-semibold text-cell-coral transition-colors hover:bg-cell-coral/5"
+            className="rounded border border-cell-coral px-4 py-2 font-ui text-sm font-semibold text-cell-coral-text transition-colors hover:bg-cell-coral/5"
           >
             Yes, reopen for revision
           </button>
@@ -176,7 +176,7 @@ export function ReopenPanel({ projectId }: { projectId: string }) {
         <button
           type="button"
           onClick={() => setConfirming(true)}
-          className="mt-4 rounded border border-border-subtle px-4 py-2 font-ui text-sm font-semibold text-ink-body transition-colors hover:border-cell-coral hover:text-cell-coral"
+          className="mt-4 rounded border border-border-subtle px-4 py-2 font-ui text-sm font-semibold text-ink-body transition-colors hover:border-cell-coral hover:text-cell-coral-text"
         >
           Reopen for revision
         </button>

@@ -50,7 +50,7 @@ export function SignUpForm({ years }: { years: number[] }) {
           className="mt-1.5 w-full rounded border border-border-subtle bg-surface px-3 py-2.5 text-sm text-ink-strong"
         />
         {err.full_name && (
-          <p id="full_name-error" className="mt-1 font-ui text-xs text-cell-coral">
+          <p id="full_name-error" className="mt-1 font-ui text-xs text-cell-coral-text">
             {err.full_name}
           </p>
         )}
@@ -71,17 +71,21 @@ export function SignUpForm({ years }: { years: number[] }) {
           className="mt-1.5 w-full rounded border border-border-subtle bg-surface px-3 py-2.5 text-sm text-ink-strong"
         />
         {err.email && (
-          <p id="email-error" className="mt-1 font-ui text-xs text-cell-coral">
+          <p id="email-error" className="mt-1 font-ui text-xs text-cell-coral-text">
             {err.email}
           </p>
         )}
       </div>
 
-      <fieldset>
+      <fieldset
+        role="radiogroup"
+        aria-invalid={err.class_section ? true : undefined}
+        aria-describedby={err.class_section ? "class_section-error" : undefined}
+      >
         <legend className="block font-ui text-sm font-medium text-ink-strong">Class</legend>
         <div className="mt-2 flex gap-4">
           {(["A1", "A2"] as const).map((c) => (
-            <label key={c} className="flex items-center gap-2 font-ui text-sm text-ink-body">
+            <label key={c} className="flex min-h-11 items-center gap-2 py-1.5 font-ui text-sm text-ink-body">
               <input
                 type="radio"
                 name="class_section"
@@ -94,7 +98,9 @@ export function SignUpForm({ years }: { years: number[] }) {
           ))}
         </div>
         {err.class_section && (
-          <p className="mt-1 font-ui text-xs text-cell-coral">{err.class_section}</p>
+          <p id="class_section-error" className="mt-1 font-ui text-xs text-cell-coral-text">
+            {err.class_section}
+          </p>
         )}
       </fieldset>
 
@@ -108,7 +114,9 @@ export function SignUpForm({ years }: { years: number[] }) {
           required
           defaultValue=""
           aria-invalid={err.year_joined ? true : undefined}
-          aria-describedby="year_joined-hint"
+          aria-describedby={
+            err.year_joined ? "year_joined-hint year_joined-error" : "year_joined-hint"
+          }
           className="mt-1.5 w-full rounded border border-border-subtle bg-surface px-3 py-2.5 text-sm text-ink-strong"
         >
           <option value="" disabled>
@@ -124,7 +132,9 @@ export function SignUpForm({ years }: { years: number[] }) {
           The year you actually joined, which may not be this year.
         </p>
         {err.year_joined && (
-          <p className="mt-1 font-ui text-xs text-cell-coral">{err.year_joined}</p>
+          <p id="year_joined-error" className="mt-1 font-ui text-xs text-cell-coral-text">
+            {err.year_joined}
+          </p>
         )}
       </div>
 

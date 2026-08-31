@@ -66,7 +66,7 @@ export default async function HomePage() {
                   {content.tagline}
                 </p>
               ) : (
-                <p className="mt-4 font-ui text-sm text-white/45 italic">
+                <p className="mt-4 font-ui text-sm text-white/60 italic">
                   Tagline to be confirmed by the school.
                 </p>
               )}

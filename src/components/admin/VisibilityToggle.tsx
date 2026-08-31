@@ -15,7 +15,7 @@ function Toggle({ isPublic }: { isPublic: boolean }) {
       disabled={pending}
       className={`rounded border px-3 py-1.5 font-ui text-xs font-semibold transition-colors disabled:cursor-not-allowed disabled:opacity-60 ${
         isPublic
-          ? "border-border-subtle text-ink-body hover:border-cell-coral hover:text-cell-coral"
+          ? "border-border-subtle text-ink-body hover:border-cell-coral hover:text-cell-coral-text"
           : "border-lgs-500 text-lgs-600 hover:bg-lgs-50"
       }`}
     >
@@ -41,7 +41,7 @@ export function VisibilityToggle({
         <Toggle isPublic={isPublic} />
       </form>
       {state.message && !state.ok && (
-        <p role="alert" className="font-ui text-xs text-cell-coral">
+        <p role="alert" className="font-ui text-xs text-cell-coral-text">
           {state.message}
         </p>
       )}
