@@ -62,7 +62,7 @@ export default async function JournalPage({
       supabase
         .from("published_journal_papers")
         .select(
-          "project_id, display_order, start_page, end_page, title, abstract, research_type, authorship_mode, team_name, research_area, subject_name",
+          "project_id, display_order, start_page, end_page, title, slug, abstract, research_type, authorship_mode, team_name, research_area, subject_name",
         )
         .eq("journal_id", journal.id)
         .order("display_order"),
@@ -190,7 +190,12 @@ export default async function JournalPage({
                 </p>
 
                 <h3 className="mt-1.5 font-heading text-lg font-bold text-ink-strong">
-                  {p.title}
+                  <Link
+                    href={`/research/${p.slug}`}
+                    className="text-ink-strong underline decoration-border-subtle underline-offset-2 transition-colors hover:text-lgs-600 hover:decoration-lgs-500"
+                  >
+                    {p.title}
+                  </Link>
                 </h3>
 
                 {p.team_name && (

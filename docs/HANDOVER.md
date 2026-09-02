@@ -107,7 +107,7 @@ search path.
 | Storage buckets | 6 (3 public, 3 private) |
 | Storage policies | 15 |
 | Migrations | 16 |
-| Application routes | 30 |
+| Application routes | 31 |
 
 ### Framework notes
 
@@ -140,7 +140,8 @@ search path.
 │   │   ├── layout.tsx              Root layout, fonts
 │   │   ├── (public)/               Archive — no session required
 │   │   │   ├── page.tsx            Home
-│   │   │   ├── about/  research/  journals/  journals/[slug]/
+│   │   │   ├── about/  research/  research/[slug]/
+│   │   │   ├── journals/  journals/[slug]/
 │   │   │   └── people/  resources/
 │   │   ├── (auth)/                 Sign-in, registration, account states
 │   │   │   ├── login/student/      + /sign-up  + /sign-up/submitted
@@ -422,10 +423,11 @@ The development test suites are not committed to this repository — they were
 written against disposable accounts on a development Supabase project and would
 be actively dangerous pointed at production. They covered, at handover:
 
-- 453 functional and permission checks across the seven build phases
+- 508 functional and permission checks across the build phases
 - 80 penetration checks against real authenticated sessions for anonymous,
   student, leadership and school-administration callers
-- an accessibility audit of all 30 routes
+- 12 link-integrity checks (see below)
+- an accessibility audit of all 31 routes
 
 If you rebuild them, the essential shape is: sign in for real, get a JWT, and
 call the Supabase REST API directly as each role. Testing through the UI only
@@ -435,6 +437,18 @@ tells you what the UI does. Two rules that were learned the hard way:
   the security suite passed while asserting nothing — one because the account
   was already in the state being "prevented".
 - **Never weaken a security rule to make an old test pass.** Fix the test.
+- **Assert properties, not counts.** Several checks compared absolute row counts
+  against a shared database, so they broke the moment a real person registered
+  or published something legitimate. Assert who is included and excluded.
+- **Test reachability, not only data and permissions.** This one was learned
+  expensively: sixteen suites reported the public archive healthy while it was
+  a dead end. Every published paper was readable over the API and no page linked
+  to one, because the paper route had never been built. Data correctness and
+  permission correctness are not the same thing as a person being able to get
+  there. `test-links` now crawls the public site as an anonymous visitor,
+  fails on any internal link that 404s, and asserts that every published paper
+  is linked from both the index and its journal — while confirming that nothing
+  unpublished became reachable in the process.
 
 ---
 
@@ -917,6 +931,16 @@ future maintainer should know which is which.
   public pages rather than displayed. Whether the Research Cell is STEM-only was
   not decided, and the site does not assume an answer.
 - **No bootstrap for the first administrator.** By design; see §3.
+- **The Journal I PDF and cover have not been uploaded.** `journals.pdf_path`
+  and `cover_path` are null, so the journal page shows a generated cover and
+  no "Read the full journal" button, and each paper page says the journal is
+  not yet available to read online rather than offering a link that would not
+  work. Upload the PDF to the `journal-pdfs` bucket and the cover to
+  `journal-covers`, then set the two columns on the Journal I row; both
+  affordances appear on their own. Nothing was substituted in the meantime.
+- **The six Journal I papers have no abstracts.** `abstract` is null on every
+  one, so the paper pages show title, byline, type, subject, area and page
+  range but no summary. The abstracts are school content and were not invented.
 
 ### Observations from the final audit, not implemented
 

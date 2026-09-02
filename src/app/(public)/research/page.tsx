@@ -53,7 +53,7 @@ export default async function ResearchPage({
     supabase
       .from("published_journal_papers")
       .select(
-        "journal_id, project_id, title, abstract, research_type, authorship_mode, team_name, research_area, subject_name, start_page",
+        "journal_id, project_id, title, slug, abstract, research_type, authorship_mode, team_name, research_area, subject_name, start_page",
       )
       .order("title"),
     supabase.from("published_paper_authors").select("project_id, author_order, full_name"),
@@ -193,7 +193,12 @@ export default async function ResearchPage({
                       .join(" · ")}
                   </p>
                   <h2 className="mt-1.5 font-heading text-lg font-bold text-ink-strong">
-                    {p.title}
+                    <Link
+                      href={`/research/${p.slug}`}
+                      className="text-ink-strong underline decoration-border-subtle underline-offset-2 transition-colors hover:text-lgs-600 hover:decoration-lgs-500"
+                    >
+                      {p.title}
+                    </Link>
                   </h2>
                   {p.team_name && (
                     <p className="mt-1 font-ui text-sm font-medium text-lgs-600">{p.team_name}</p>
