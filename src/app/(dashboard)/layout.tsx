@@ -1,6 +1,7 @@
 import Link from "next/link";
 
 import { Wordmark } from "@/components/brand/Wordmark";
+import { NavLink } from "@/components/site/NavLink";
 import { signOut } from "@/lib/auth/actions";
 import { requireActiveAccount } from "@/lib/auth/session";
 import { createClient } from "@/lib/supabase/server";
@@ -96,12 +97,12 @@ export default async function DashboardLayout({
           <ul className="mx-auto flex max-w-6xl gap-1 overflow-x-auto px-4 sm:px-6">
             {nav.map((item) => (
               <li key={item.href}>
-                <Link
+                <NavLink
                   href={item.href}
                   className="inline-block whitespace-nowrap px-3 py-3 font-ui text-sm text-ink-body transition-colors hover:text-lgs-600"
                 >
                   {item.label}
-                </Link>
+                </NavLink>
               </li>
             ))}
             <li>
