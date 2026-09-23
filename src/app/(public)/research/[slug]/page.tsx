@@ -1,13 +1,12 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 
-import { env } from "@/lib/env";
 import { createClient } from "@/lib/supabase/server";
 
 /**
  * The tab and search title name the paper rather than saying "Research".
- * Resolved from the same public view the page uses, so a paper that is not in
- * a published journal yields nothing here either.
+ * Resolved from the same public view the page uses, so a draft yields nothing
+ * here either.
  */
 export async function generateMetadata({
   params,
@@ -17,7 +16,7 @@ export async function generateMetadata({
   const { slug } = await params;
   const supabase = await createClient();
   const { data } = await supabase
-    .from("published_journal_papers")
+    .from("published_research")
     .select("title, abstract")
     .eq("slug", slug)
     .maybeSingle();
@@ -34,17 +33,16 @@ export async function generateMetadata({
 /**
  * A single published paper.
  *
- * Every query runs anonymously against published_journal_papers and
- * published_paper_authors, both of which join through to journals and return
- * rows only where the issue is published. So the rule that approval alone
- * exposes nothing holds here without a separate check: a paper that has been
- * approved but not yet published simply does not resolve, and reaches a 404
- * rather than a partial page.
+ * Everything is read through published_research and
+ * published_research_authors, both of which return rows only for papers whose
+ * status is `published`. A draft therefore does not resolve here: it reaches a
+ * 404, and it does so because the database returned nothing, not because this
+ * file checked a flag.
  *
- * The full text lives in the journal PDF, not in a per-paper file — Journal I
- * is a single bound volume and the page range is how a paper is located inside
- * it. Where no PDF has been uploaded yet, this page says so plainly instead of
- * offering a link that would not work.
+ * The PDF is signed rather than linked directly. The bucket is private, and an
+ * anonymous visitor may read an object only when it belongs to a published
+ * paper — so unpublishing a paper withdraws its PDF too, without anything here
+ * having to remember to.
  */
 export default async function PaperPage({
   params,
@@ -55,48 +53,60 @@ export default async function PaperPage({
   const supabase = await createClient();
 
   const { data: paper } = await supabase
-    .from("published_journal_papers")
+    .from("published_research")
     .select(
-      "journal_id, project_id, title, slug, abstract, research_type, authorship_mode, team_name, research_area, subject_name, start_page, end_page",
+      "id, title, slug, abstract, research_area, supervisor, references_text, research_type, authorship_mode, team_name, pdf_path, pdf_filename, published_at, subject_name, academic_year",
     )
     .eq("slug", slug)
     .maybeSingle();
 
   if (!paper) notFound();
 
-  const [{ data: bylines }, { data: journal }] = await Promise.all([
+  const [{ data: bylines }, { data: appearance }] = await Promise.all([
     supabase
-      .from("published_paper_authors")
+      .from("published_research_authors")
       .select("author_role, author_order, full_name")
-      .eq("project_id", paper.project_id)
+      .eq("project_id", paper.id)
       .order("author_order"),
+    // A paper may also have been collected into a journal. That is extra
+    // context, not what makes it public.
     supabase
-      .from("journals")
-      .select("title, slug, pdf_path, published_at, academic_years(label)")
-      .eq("id", paper.journal_id)
+      .from("journal_papers")
+      .select("start_page, end_page, journals(title, slug, status)")
+      .eq("project_id", paper.id)
       .maybeSingle(),
   ]);
 
   const authors = bylines ?? [];
-  const year = (journal?.academic_years as unknown as { label: string } | null)?.label;
+  const journal = (appearance?.journals as unknown as
+    | { title: string; slug: string; status: string }
+    | null) ?? null;
+  const inPublishedJournal = journal?.status === "published";
 
-  // Deep-linked to the paper's first page where the viewer honours the
-  // fragment, which every current desktop browser does.
-  const pdfUrl = journal?.pdf_path
-    ? `${env.supabaseUrl}/storage/v1/object/public/journal-pdfs/${journal.pdf_path}` +
-      (paper.start_page ? `#page=${paper.start_page}` : "")
-    : null;
+  let pdfUrl: string | null = null;
+  if (paper.pdf_path) {
+    const { data } = await supabase.storage
+      .from("research-submissions")
+      .createSignedUrl(paper.pdf_path, 60 * 60);
+    pdfUrl = data?.signedUrl ?? null;
+  }
 
   const typeLabel =
     paper.research_type === "primary"
       ? "Primary Research"
       : paper.research_type === "secondary"
         ? "Secondary Research"
-        : "Independent Research";
+        : paper.research_type === "independent"
+          ? "Independent Research"
+          : null;
 
-  const pages = paper.start_page
-    ? `pp. ${paper.start_page}–${paper.end_page ?? paper.start_page}`
-    : null;
+  const meta = [
+    typeLabel,
+    paper.authorship_mode === "team" ? "Team research" : null,
+    paper.subject_name,
+    paper.research_area,
+    paper.academic_year,
+  ].filter(Boolean);
 
   return (
     <div className="mx-auto max-w-5xl px-4 py-16 sm:px-6 sm:py-20">
@@ -109,16 +119,9 @@ export default async function PaperPage({
       </p>
 
       <header className="rule-notebook mt-4 pt-8">
-        <p className="font-ui text-xs text-ink-muted">
-          {[
-            typeLabel,
-            paper.authorship_mode === "team" ? "Team research" : "Individual research",
-            paper.subject_name,
-            paper.research_area,
-          ]
-            .filter(Boolean)
-            .join(" · ")}
-        </p>
+        {meta.length > 0 && (
+          <p className="font-ui text-xs text-ink-muted">{meta.join(" · ")}</p>
+        )}
 
         <h1 className="mt-2 max-w-prose font-heading text-3xl font-extrabold text-ink-strong sm:text-4xl">
           {paper.title}
@@ -141,6 +144,21 @@ export default async function PaperPage({
             ))}
           </p>
         )}
+
+        {paper.supervisor && (
+          <p className="mt-2 font-ui text-sm text-ink-muted">
+            Supervised by {paper.supervisor}
+          </p>
+        )}
+
+        {pdfUrl && (
+          <a
+            href={pdfUrl}
+            className="mt-6 inline-block rounded bg-cell-ink px-5 py-2.5 font-ui text-sm font-semibold text-white transition-colors hover:bg-cell-ink-deep"
+          >
+            Read the paper (PDF)
+          </a>
+        )}
       </header>
 
       {paper.abstract && (
@@ -152,57 +170,62 @@ export default async function PaperPage({
         </section>
       )}
 
+      {paper.references_text && (
+        <section className="mt-12" aria-labelledby="references">
+          <h2 id="references" className="font-heading text-xl font-bold text-ink-strong">
+            References
+          </h2>
+          {/* Kept exactly as written, line by line. The school has not settled
+              on a citation style, and reformatting would rewrite the authors'
+              work rather than present it. */}
+          <ul className="mt-3 max-w-prose space-y-2">
+            {String(paper.references_text)
+              .split("\n")
+              .map((line: string) => line.trim())
+              .filter(Boolean)
+              .map((line: string, i: number) => (
+                <li key={i} className="text-sm leading-relaxed text-ink-body">
+                  {line}
+                </li>
+              ))}
+          </ul>
+        </section>
+      )}
+
       <section className="mt-12" aria-labelledby="publication">
         <h2 id="publication" className="font-heading text-xl font-bold text-ink-strong">
           Publication
         </h2>
+        <p className="mt-3 text-ink-body">
+          Published by the 1A1 Research Cell
+          {paper.academic_year ? `, ${paper.academic_year}` : ""}
+          {paper.published_at
+            ? ` · ${new Date(paper.published_at).toLocaleDateString("en-GB", {
+                day: "numeric",
+                month: "long",
+                year: "numeric",
+              })}`
+            : ""}
+          .
+        </p>
 
-        {journal ? (
-          <>
-            <p className="mt-3 text-ink-body">
-              Published in{" "}
-              <Link href={`/journals/${journal.slug}`} className="text-lgs-600 underline">
-                {journal.title}
-              </Link>
-              {[
-                year,
-                pages,
-                journal.published_at
-                  ? new Date(journal.published_at).toLocaleDateString("en-GB", {
-                      day: "numeric",
-                      month: "long",
-                      year: "numeric",
-                    })
-                  : null,
-              ]
-                .filter(Boolean)
-                .map((bit) => ` · ${bit}`)
-                .join("")}
-              .
-            </p>
+        {inPublishedJournal && journal && (
+          <p className="mt-2 text-ink-body">
+            Collected in{" "}
+            <Link href={`/journals/${journal.slug}`} className="text-lgs-600 underline">
+              {journal.title}
+            </Link>
+            {appearance?.start_page
+              ? `, pp. ${appearance.start_page}–${appearance.end_page ?? appearance.start_page}`
+              : ""}
+            .
+          </p>
+        )}
 
-            {pdfUrl ? (
-              <a
-                href={pdfUrl}
-                className="mt-5 inline-block rounded bg-cell-ink px-5 py-2.5 font-ui text-sm font-semibold text-white transition-colors hover:bg-cell-ink-deep"
-              >
-                Read this paper in {journal.title} (PDF
-                {paper.start_page ? `, from p. ${paper.start_page}` : ""})
-              </a>
-            ) : (
-              /* No link rather than a broken one. The journal PDF has not been
-                 uploaded, and inventing a destination would be worse than
-                 saying so. */
-              <p className="mt-5 max-w-prose rounded-lg border border-dashed border-border-subtle bg-surface-muted p-5 text-sm leading-relaxed text-ink-body">
-                The full text of this paper is published in {journal.title}
-                {pages ? `, ${pages}` : ""}. The journal is not yet available to
-                read online.
-              </p>
-            )}
-          </>
-        ) : (
-          <p className="mt-3 text-ink-body">
-            This paper appears in a published journal of the 1A1 Research Cell.
+        {!pdfUrl && (
+          /* No link rather than a broken one. */
+          <p className="mt-5 max-w-prose rounded-lg border border-dashed border-border-subtle bg-surface-muted p-5 text-sm leading-relaxed text-ink-body">
+            The full text of this paper is not available to read online.
           </p>
         )}
       </section>

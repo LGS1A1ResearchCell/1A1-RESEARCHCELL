@@ -25,13 +25,13 @@ function Chip({ href, active, children }: ChipProps) {
 /**
  * The public research library.
  *
- * Papers appear here only once they are in a published journal — the same rule
- * is_project_public() applies everywhere else, and the view this reads from
- * joins through to journals and returns published issues only.
+ * Reads published_research, which returns a paper when the paper itself is
+ * published. It used to return a paper when some journal containing it was
+ * published; research now stands on its own, and a paper need never appear in
+ * a journal to be readable.
  *
- * The filters are deliberately shallow: type, subject and journal, matching the
- * taxonomy the archive actually uses rather than one invented ahead of the
- * school deciding what its research covers.
+ * A draft cannot appear here — not because this query filters it out, but
+ * because Row Level Security does not return it to an anonymous caller at all.
  */
 export default async function ResearchPage({
   searchParams,
@@ -45,35 +45,23 @@ export default async function ResearchPage({
   };
   const fType = one("type");
   const fSubject = one("subject");
-  const fJournal = one("journal");
+  const fYear = one("year");
 
   const supabase = await createClient();
 
-  const [{ data: rows }, { data: bylines }, { data: journals }] = await Promise.all([
+  const [{ data: rows }, { data: bylines }] = await Promise.all([
     supabase
-      .from("published_journal_papers")
+      .from("published_research")
       .select(
-        "journal_id, project_id, title, slug, abstract, research_type, authorship_mode, team_name, research_area, subject_name, start_page",
+        "id, title, slug, abstract, research_area, supervisor, research_type, authorship_mode, team_name, subject_name, academic_year, published_at",
       )
       .order("title"),
-    supabase.from("published_paper_authors").select("project_id, author_order, full_name"),
     supabase
-      .from("journals")
-      .select("id, title, slug, academic_years(label)")
-      .order("published_at", { ascending: false }),
+      .from("published_research_authors")
+      .select("project_id, author_order, full_name"),
   ]);
 
   const all = rows ?? [];
-  const journalOf = new Map(
-    (journals ?? []).map((j) => [
-      j.id,
-      {
-        title: j.title,
-        slug: j.slug,
-        year: (j.academic_years as unknown as { label: string } | null)?.label ?? null,
-      },
-    ]),
-  );
 
   const authorsFor = (id: string) =>
     (bylines ?? [])
@@ -85,36 +73,38 @@ export default async function ResearchPage({
     (p) =>
       (!fType || p.research_type === fType) &&
       (!fSubject || p.subject_name === fSubject) &&
-      (!fJournal || journalOf.get(p.journal_id)?.slug === fJournal),
+      (!fYear || p.academic_year === fYear),
   );
 
   const subjects = [...new Set(all.map((p) => p.subject_name).filter(Boolean))].sort();
+  const years = [...new Set(all.map((p) => p.academic_year).filter(Boolean))].sort().reverse();
   const types = [
     { value: "primary", label: "Primary" },
     { value: "secondary", label: "Secondary" },
     { value: "independent", label: "Independent" },
   ];
+  const typesPresent = types.filter((t) => all.some((p) => p.research_type === t.value));
 
   const linkFor = (patch: Record<string, string | undefined>) => {
     const q = new URLSearchParams();
-    const merged = { type: fType, subject: fSubject, journal: fJournal, ...patch };
+    const merged = { type: fType, subject: fSubject, year: fYear, ...patch };
     for (const [k, v] of Object.entries(merged)) if (v) q.set(k, v);
     const s = q.toString();
     return s ? `/research?${s}` : "/research";
   };
 
-  const typeLabel = (t: string) =>
+  const typeLabel = (t: string | null) =>
     t === "primary" ? "Primary Research"
       : t === "secondary" ? "Secondary Research"
-      : "Independent Research";
+      : t === "independent" ? "Independent Research"
+      : null;
 
   return (
     <div className="mx-auto max-w-6xl px-4 py-16 sm:px-6 sm:py-20">
       <header className="rule-notebook pt-8">
         <h1 className="font-heading text-3xl font-extrabold sm:text-4xl">Research</h1>
         <p className="mt-4 max-w-prose text-lg text-ink-body">
-          Research published by the 1A1 Research Cell. Papers appear here once
-          they have been included in a published journal.
+          Research published by the 1A1 Research Cell.
         </p>
       </header>
 
@@ -125,19 +115,21 @@ export default async function ResearchPage({
       ) : (
         <>
           <div className="mt-10 space-y-3">
-            <div className="flex flex-wrap items-center gap-2">
-              <span className="font-ui text-xs font-semibold tracking-wide text-ink-muted uppercase">
-                Type
-              </span>
-              <Chip href={linkFor({ type: undefined })} active={!fType}>
-                All
-              </Chip>
-              {types.map((t) => (
-                <Chip key={t.value} href={linkFor({ type: t.value })} active={fType === t.value}>
-                  {t.label}
+            {typesPresent.length > 0 && (
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="font-ui text-xs font-semibold tracking-wide text-ink-muted uppercase">
+                  Type
+                </span>
+                <Chip href={linkFor({ type: undefined })} active={!fType}>
+                  All
                 </Chip>
-              ))}
-            </div>
+                {typesPresent.map((t) => (
+                  <Chip key={t.value} href={linkFor({ type: t.value })} active={fType === t.value}>
+                    {t.label}
+                  </Chip>
+                ))}
+              </div>
+            )}
 
             {subjects.length > 0 && (
               <div className="flex flex-wrap items-center gap-2">
@@ -155,17 +147,17 @@ export default async function ResearchPage({
               </div>
             )}
 
-            {(journals ?? []).length > 1 && (
+            {years.length > 1 && (
               <div className="flex flex-wrap items-center gap-2">
                 <span className="font-ui text-xs font-semibold tracking-wide text-ink-muted uppercase">
-                  Journal
+                  Year
                 </span>
-                <Chip href={linkFor({ journal: undefined })} active={!fJournal}>
+                <Chip href={linkFor({ year: undefined })} active={!fYear}>
                   All
                 </Chip>
-                {(journals ?? []).map((j) => (
-                  <Chip key={j.id} href={linkFor({ journal: j.slug })} active={fJournal === j.slug}>
-                    {j.title}
+                {years.map((y) => (
+                  <Chip key={y} href={linkFor({ year: y as string })} active={fYear === y}>
+                    {y}
                   </Chip>
                 ))}
               </div>
@@ -178,16 +170,15 @@ export default async function ResearchPage({
 
           <ol className="mt-6 space-y-8">
             {filtered.map((p) => {
-              const j = journalOf.get(p.journal_id);
-              const authors = authorsFor(p.project_id);
+              const authors = authorsFor(p.id);
               return (
-                <li key={p.project_id} className="border-l-2 border-border-subtle pl-5">
+                <li key={p.id} className="border-l-2 border-border-subtle pl-5">
                   <p className="font-ui text-xs text-ink-muted">
                     {[
                       typeLabel(p.research_type),
-                      p.authorship_mode === "team" ? "Team research" : "Individual research",
                       p.subject_name,
                       p.research_area,
+                      p.academic_year,
                     ]
                       .filter(Boolean)
                       .join(" · ")}
@@ -206,19 +197,14 @@ export default async function ResearchPage({
                   {authors.length > 0 && (
                     <p className="mt-1 font-ui text-sm text-ink-body">{authors.join(", ")}</p>
                   )}
+                  {p.supervisor && (
+                    <p className="mt-1 font-ui text-xs text-ink-muted">
+                      Supervised by {p.supervisor}
+                    </p>
+                  )}
                   {p.abstract && (
                     <p className="mt-3 max-w-prose text-sm leading-relaxed text-ink-body">
                       {p.abstract}
-                    </p>
-                  )}
-                  {j && (
-                    <p className="mt-3 font-ui text-xs text-ink-muted">
-                      Published in{" "}
-                      <Link href={`/journals/${j.slug}`} className="text-lgs-600 underline">
-                        {j.title}
-                      </Link>
-                      {j.year ? ` · ${j.year}` : ""}
-                      {p.start_page ? ` · p. ${p.start_page}` : ""}
                     </p>
                   )}
                 </li>
