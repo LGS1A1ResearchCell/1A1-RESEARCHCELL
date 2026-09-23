@@ -20,13 +20,6 @@ const SECTIONS = [
       { href: "/resources", label: "Resources" },
     ],
   },
-  {
-    heading: "Members",
-    links: [
-      { href: "/login/student", label: "Student Login" },
-      { href: "/login/admin", label: "Admin Login" },
-    ],
-  },
 ] as const;
 
 /**

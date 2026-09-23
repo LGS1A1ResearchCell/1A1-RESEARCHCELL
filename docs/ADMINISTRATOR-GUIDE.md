@@ -11,6 +11,33 @@ software itself, read [HANDOVER.md](./HANDOVER.md) instead.
 
 ---
 
+> ## ⚠ How you sign in has changed
+>
+> There are no longer individual accounts. Nobody has their own username or
+> password, and students do not sign in at all.
+>
+> **There is now one password for the whole management area**, shared by
+> Research Cell leadership and school administration. Go to **/login**, type it,
+> and you are in.
+>
+> Because it is shared, it cannot be changed for one person at a time. If
+> someone should no longer have access, the password has to be changed for
+> everyone — ask whoever maintains the site.
+>
+> **What this means for the rest of this guide:** the sections about approving
+> student registrations, reviewing submissions and managing individual accounts
+> describe the old system and no longer apply. The management area now has seven
+> sections: Research, Drafts, Journals, People, Resources, Announcements and
+> Site content.
+>
+> **Photographs of people have been removed** from the site entirely. There is
+> nowhere to upload one, and the public People page no longer shows them.
+>
+> This guide will be rewritten once the restructuring is finished. Until then,
+> where it disagrees with this box, this box is correct.
+
+---
+
 ## Contents
 
 - [Who can do what](#who-can-do-what)

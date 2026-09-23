@@ -1,6 +1,5 @@
 import { LeadershipForm } from "@/components/admin/LeadershipForm";
 import { VisibilityToggle } from "@/components/admin/VisibilityToggle";
-import { Portrait } from "@/components/people/Portrait";
 import { requireSchoolAdmin } from "@/lib/auth/session";
 import { createClient } from "@/lib/supabase/server";
 
@@ -25,7 +24,7 @@ export default async function AdminPeoplePage() {
   const [{ data: people }, { data: years }, { data: leadership }] = await Promise.all([
     supabase
       .from("people")
-      .select("id, full_name, kind, class_section, year_joined, is_public, photo_path, photo_focal_x, photo_focal_y")
+      .select("id, full_name, kind, class_section, year_joined, is_public")
       .order("is_public", { ascending: false })
       .order("full_name"),
     supabase.from("academic_years").select("id, label, is_current").order("label", { ascending: false }),
@@ -102,13 +101,6 @@ export default async function AdminPeoplePage() {
         <ul className="mt-6 divide-y divide-border-subtle overflow-hidden rounded-lg border border-border-subtle bg-surface">
           {all.map((p) => (
             <li key={p.id} className="flex flex-wrap items-center gap-4 p-4">
-              <Portrait
-                name={p.full_name}
-                photoPath={p.photo_path}
-                focalX={Number(p.photo_focal_x ?? 0.5)}
-                focalY={Number(p.photo_focal_y ?? 0.4)}
-                size={44}
-              />
               <div className="min-w-0 flex-1">
                 <p className="font-ui text-sm font-semibold text-ink-strong">
                   {p.full_name}

@@ -82,37 +82,31 @@ export async function getSessionContext(): Promise<SessionContext | null> {
 }
 
 /**
- * Require a usable account, or send the visitor somewhere that explains why not.
+ * Require a usable session, or send the visitor away.
  *
- * A suspended or alumni account reaches `/account/inactive` rather than the
- * login page: they are correctly signed in, and telling them to log in again
- * would be both wrong and infuriating.
+ * Anyone who is not signed in goes to the one login page. Anyone who is signed
+ * in but whose account is not active goes to the public site rather than back
+ * to the login form: the password would work, they would land here again, and
+ * the loop would never end. The public site is the honest destination — it is
+ * what they are entitled to see.
  */
 export async function requireActiveAccount(
-  loginPath = "/login/student",
+  loginPath = "/login",
 ): Promise<SessionContext> {
   const ctx = await getSessionContext();
   if (!ctx) redirect(loginPath);
-  if (!ctx.isActive) redirect("/account/inactive");
+  if (!ctx.isActive) redirect("/");
   return ctx;
 }
 
 export async function requireLeadership(): Promise<SessionContext> {
-  const ctx = await requireActiveAccount("/login/admin");
-  if (!ctx.isLeadership) redirect("/dashboard");
+  const ctx = await requireActiveAccount();
+  if (!ctx.isLeadership) redirect("/");
   return ctx;
 }
 
 export async function requireSchoolAdmin(): Promise<SessionContext> {
-  const ctx = await requireActiveAccount("/login/admin");
-  // Research Cell leadership landing here is not an error on their part, so
-  // they go to the part of the admin area they can actually use.
-  if (!ctx.isSchoolAdmin) redirect("/admin");
+  const ctx = await requireActiveAccount();
+  if (!ctx.isSchoolAdmin) redirect("/");
   return ctx;
-}
-
-/** Where a given account belongs after signing in. */
-export function homePathFor(ctx: SessionContext): string {
-  if (!ctx.isActive) return "/account/inactive";
-  return ctx.isLeadership ? "/admin" : "/dashboard";
 }

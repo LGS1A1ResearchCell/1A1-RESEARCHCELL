@@ -8,13 +8,13 @@ import { updateSession } from "@/lib/supabase/session";
  * check roles or account status: doing so would mean a database round trip on
  * every request, including for public archive pages that need none.
  *
- * Role and status are checked in the layouts for /dashboard and /admin, which
- * run on the server for exactly those routes. And neither is the real boundary
- * — Row Level Security is. This only decides which page someone reaches, never
- * what data they can read once there.
+ * Whether the session is actually allowed to manage anything is checked in the
+ * /admin layout, which runs on the server for exactly those routes. And neither
+ * is the real boundary — Row Level Security is. This only decides which page
+ * someone reaches, never what data they can read once there.
  */
 
-const PROTECTED = ["/dashboard", "/admin", "/account/inactive"];
+const PROTECTED = ["/admin"];
 
 export default async function proxy(request: NextRequest) {
   const { response, user } = await updateSession(request);
@@ -26,11 +26,7 @@ export default async function proxy(request: NextRequest) {
 
   if (needsSession && !user) {
     const url = request.nextUrl.clone();
-    // Admin routes send people to the admin entry, students to theirs, so the
-    // page they land on matches what they were trying to reach.
-    url.pathname = pathname.startsWith("/admin")
-      ? "/login/admin"
-      : "/login/student";
+    url.pathname = "/login";
     url.searchParams.set("next", pathname);
     return NextResponse.redirect(url);
   }

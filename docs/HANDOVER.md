@@ -11,6 +11,105 @@ If you are a member of school administration or Research Cell leadership and
 you want to *use* the system rather than maintain it, read
 [ADMINISTRATOR-GUIDE.md](./ADMINISTRATOR-GUIDE.md) instead.
 
+> ## ⚠ Restructuring in progress — read this first
+>
+> The school has decided the site needs **no student accounts and no individual
+> logins**. The private management area is now reached with **one shared
+> password**, held by Research Cell leadership and school administration.
+>
+> **Session 1 of 4 is complete.** What is true today:
+>
+> - The public site is unchanged and needs no account of any kind.
+> - The CMS is at `/admin`, entered at `/login` with the shared password.
+>   It has seven sections: Research, Drafts, Journals, People, Resources,
+>   Announcements, Site content.
+> - Student registration, the per-student dashboard, the submission and review
+>   workflow, and the account-approval screens have been **removed**.
+> - People photographs have been **removed entirely** — columns, storage bucket
+>   and policies.
+> - No data was deleted. Journal I, its authorships, credits, founders and the
+>   audit log are all intact.
+>
+> **Sections 6 to 10 below still describe the previous account-based system**
+> and have not yet been rewritten. Where they disagree with this box, this box
+> is correct. A full rewrite is scheduled for the end of the restructuring, so
+> that it is written once against the finished architecture rather than three
+> times against moving parts.
+>
+> See **Private CMS access** immediately below for how to get in.
+
+## Private CMS access
+
+There is one password. Everyone who manages the site uses it.
+
+**Setting or changing it:**
+
+```bash
+node scripts/hash-cms-password.mjs
+```
+
+It prompts for the password, prints a `CMS_PASSWORD_HASH=…` line, and stores
+the password nowhere. Put that line in `.env.local` for development and in the
+Vercel environment for production, then redeploy. Keep the password itself in
+the school's password manager.
+
+**Why there are three variables and not one.** Accepting the password is only
+the first step; the server then signs in to Supabase as an ordinary account
+holding the `school_admin` role, and that session is what talks to the
+database. It would be simpler to use the service-role key instead, but that key
+ignores every Row Level Security policy in the schema — the CMS would become
+trusted code and any mistake in a server action would become a whole-database
+mistake. Signing in as an ordinary account keeps the database enforcing exactly
+what it enforced before.
+
+| Variable | What it is |
+|---|---|
+| `CMS_PASSWORD_HASH` | scrypt hash of the shared password. The only secret anyone is told. |
+| `CMS_SUPABASE_EMAIL` | An existing Supabase account with the `school_admin` role. |
+| `CMS_SUPABASE_PASSWORD` | That account's password. Nobody is told it; it never reaches a browser. |
+
+Rotating the shared password does not touch the Supabase account, and a leaked
+shared password does not give anyone direct API access.
+
+**One trap worth knowing.** The hash is stored with `:` separators, never
+`# Handover documentation
+
+**1A1 Research Cell — research archive and publication platform**
+Lahore Grammar School 1-A-1, Lahore
+
+This document is written for whoever maintains or takes ownership of this
+project after the original developer. It assumes you can use a terminal and
+read code, but not that you know anything about this codebase.
+
+If you are a member of school administration or Research Cell leadership and
+you want to *use* the system rather than maintain it, read
+[ADMINISTRATOR-GUIDE.md](./ADMINISTRATOR-GUIDE.md) instead.
+
+. Next expands environment variables when it loads `.env` files, so a
+`# Handover documentation
+
+**1A1 Research Cell — research archive and publication platform**
+Lahore Grammar School 1-A-1, Lahore
+
+This document is written for whoever maintains or takes ownership of this
+project after the original developer. It assumes you can use a terminal and
+read code, but not that you know anything about this codebase.
+
+If you are a member of school administration or Research Cell leadership and
+you want to *use* the system rather than maintain it, read
+[ADMINISTRATOR-GUIDE.md](./ADMINISTRATOR-GUIDE.md) instead.
+
+ in the value is silently replaced by nothing — the hash arrives truncated
+and the correct password stops working, with no error to explain it. This was a
+real bug during Session 1.
+
+**Not yet done:** there is no rate limiting on password attempts beyond a
+one-second delay after a wrong guess. On serverless that delay cannot hold state
+across instances. Real throttling belongs in front of the application and is
+recorded in section 15.
+
+---
+
 **Contents**
 
 1. [Architecture](#1-architecture)
@@ -941,6 +1040,20 @@ future maintainer should know which is which.
 - **The six Journal I papers have no abstracts.** `abstract` is null on every
   one, so the paper pages show title, byline, type, subject, area and page
   range but no summary. The abstracts are school content and were not invented.
+
+### Open from the Session 1 restructuring
+
+- **No rate limiting on the CMS password.** A wrong guess costs one second and
+  nothing more. One shared password with no lockout is the weakest point in the
+  new design; throttling at the edge (Vercel WAF, or a Supabase-backed attempt
+  counter) is the fix.
+- **The CMS has no per-person accountability.** Everyone shares one password, so
+  the activity log records that "school administration" acted, never who. That
+  is inherent to what the school asked for, and worth knowing rather than
+  discovering later.
+- **Research and Drafts are read-only.** They list what exists; creating and
+  editing research through the CMS is later work.
+- **The documentation below has not been rewritten** for the new architecture.
 
 ### Observations from the final audit, not implemented
 

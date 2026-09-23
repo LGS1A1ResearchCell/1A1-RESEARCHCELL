@@ -3,70 +3,45 @@ import Link from "next/link";
 import { Wordmark } from "@/components/brand/Wordmark";
 import { NavLink } from "@/components/site/NavLink";
 import { signOut } from "@/lib/auth/actions";
-import { requireActiveAccount } from "@/lib/auth/session";
-import { createClient } from "@/lib/supabase/server";
+import { requireSchoolAdmin } from "@/lib/auth/session";
 
 /**
- * Shell for every signed-in area.
+ * Shell for the private CMS.
  *
- * requireActiveAccount runs here, so a pending, suspended or alumni account
- * cannot reach any page beneath this layout regardless of which URL they try.
- * The proxy already turned away visitors with no session at all; this is the
- * check that needs the database, and it runs only on these routes.
+ * requireSchoolAdmin runs here, so nothing beneath this layout renders for a
+ * session that is not the management account, whichever URL is tried. The proxy
+ * already turned away visitors with no session at all; this is the check that
+ * needs the database, and it runs only on these routes.
  *
- * Denser than the public site, deliberately — the same tokens and typography,
+ * There is one way to hold this session — the shared password — so the
+ * navigation no longer branches by role. That branching existed to keep
+ * students out of administrative pages, and there are no student accounts any
+ * more.
+ *
+ * Denser than the public site, deliberately: the same tokens and typography,
  * but tighter, because this is a working surface rather than an archive.
  */
-export default async function DashboardLayout({
+
+/**
+ * The sections the school approved, in the order they approved them. Nothing
+ * else belongs here — an item that is not on this list is not a CMS section.
+ */
+const SECTIONS = [
+  { href: "/admin/research", label: "Research" },
+  { href: "/admin/drafts", label: "Drafts" },
+  { href: "/admin/journals", label: "Journals" },
+  { href: "/admin/people", label: "People" },
+  { href: "/admin/resources", label: "Resources" },
+  { href: "/admin/announcements", label: "Announcements" },
+  { href: "/admin/content", label: "Site content" },
+] as const;
+
+export default async function CmsLayout({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
-  const ctx = await requireActiveAccount();
+  await requireSchoolAdmin();
 
-  // Unread count for the navigation badge. notifications_self_read scopes this
-  // to the caller, so the count is theirs by construction.
-  const supabase = await createClient();
-  const { count: unread } = await supabase
-    .from("notifications")
-    .select("id", { count: "exact", head: true })
-    .is("read_at", null);
-
-  const notificationsItem = {
-    href: "/notifications",
-    label: unread ? `Notifications (${unread})` : "Notifications",
-  };
-
-  const nav = ctx.isLeadership
-    ? [
-        { href: "/admin", label: "Overview" },
-        { href: "/admin/review", label: "Review research" },
-        { href: "/admin/journals", label: "Journals" },
-        ...(ctx.isSchoolAdmin
-          ? [
-              { href: "/admin/accounts", label: "New Student Accounts" },
-              { href: "/admin/people", label: "People" },
-              { href: "/admin/content", label: "Site content" },
-              { href: "/admin/announcements", label: "Announcements" },
-              { href: "/admin/resources", label: "Resources" },
-              { href: "/admin/activity", label: "Activity log" },
-            ]
-          : []),
-        notificationsItem,
-        { href: "/profile", label: "My profile" },
-      ]
-    : [
-        { href: "/dashboard", label: "Dashboard" },
-        { href: "/my-research", label: "My research" },
-        { href: "/my-research/new", label: "Submit research" },
-        notificationsItem,
-        { href: "/profile", label: "My profile" },
-      ];
-
-  const roleLabel =
-    ctx.role === "school_admin"
-      ? "School Administration"
-      : ctx.role === "leadership"
-        ? "Research Cell Leadership"
-        : "Student";
+  const nav = [{ href: "/admin", label: "Overview" }, ...SECTIONS];
 
   return (
     <div className="flex min-h-dvh flex-col bg-surface-muted">
@@ -80,7 +55,7 @@ export default async function DashboardLayout({
 
           <div className="flex items-center gap-4">
             <span className="hidden font-ui text-xs text-ink-muted sm:inline">
-              {roleLabel}
+              Management area
             </span>
             <form action={signOut}>
               <button
@@ -93,7 +68,7 @@ export default async function DashboardLayout({
           </div>
         </div>
 
-        <nav aria-label="Portal" className="border-t border-border-subtle">
+        <nav aria-label="Management" className="border-t border-border-subtle">
           <ul className="mx-auto flex max-w-6xl gap-1 overflow-x-auto px-4 sm:px-6">
             {nav.map((item) => (
               <li key={item.href}>

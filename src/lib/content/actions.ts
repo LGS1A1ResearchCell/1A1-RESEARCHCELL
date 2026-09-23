@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 
 import { createClient } from "@/lib/supabase/server";
-import { requireActiveAccount, requireSchoolAdmin } from "@/lib/auth/session";
+import { requireSchoolAdmin } from "@/lib/auth/session";
 
 /**
  * Editable site content, announcements, resources and notifications.
@@ -172,46 +172,3 @@ export async function saveResource(
   return { ok: true, message: published ? "Saved and published." : "Saved as a draft." };
 }
 
-// -----------------------------------------------------------------------------
-// Notifications
-// -----------------------------------------------------------------------------
-
-export async function markNotificationRead(
-  _prev: ContentFormState,
-  formData: FormData,
-): Promise<ContentFormState> {
-  await requireActiveAccount();
-
-  const id = String(formData.get("notification_id") ?? "");
-  if (!id) return { ok: false, message: "Missing notification." };
-
-  const supabase = await createClient();
-  // Scoped to the caller's own row by RLS; the column guard additionally
-  // restricts this update to read_at, so nothing else can be altered here.
-  const { error } = await supabase
-    .from("notifications")
-    .update({ read_at: new Date().toISOString() })
-    .eq("id", id);
-
-  if (error) {
-    if (error.code === "42501") return { ok: false, message: error.message };
-    return { ok: false, message: "That could not be marked as read." };
-  }
-
-  revalidatePath("/notifications");
-  revalidatePath("/", "layout");
-  return { ok: true };
-}
-
-export async function markAllNotificationsRead(): Promise<void> {
-  const ctx = await requireActiveAccount();
-  const supabase = await createClient();
-  await supabase
-    .from("notifications")
-    .update({ read_at: new Date().toISOString() })
-    .eq("recipient_id", ctx.userId)
-    .is("read_at", null);
-
-  revalidatePath("/notifications");
-  revalidatePath("/", "layout");
-}

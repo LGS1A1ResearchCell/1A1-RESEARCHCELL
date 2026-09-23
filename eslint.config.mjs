@@ -12,6 +12,9 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    // Local verification scripts. Not application code, not committed, and
+    // written against Node rather than Next.
+    "tests-local/**",
   ]),
 ]);
 

@@ -17,13 +17,14 @@ const NAV = [
 /**
  * Public site header.
  *
- * The two login entries are labelled "Student Login" and "Admin Login"
- * explicitly, never "Students" or "Admin" — the label states the action, so a
- * visitor is never unsure whether a link leads to a public page or a sign-in.
+ * It carries no sign-in entry. There are no individual accounts to sign in to,
+ * and the private management area is reached at a URL the people who hold the
+ * shared password already know. Linking it from every public page would only
+ * invite attempts at a password that is shared and cannot be revoked for one
+ * person at a time.
  *
  * The mobile layout is a genuine panel rather than a narrowed desktop bar: the
- * section links stack at full tap size and the two login entries are separated
- * out below them, because on a phone they are the most likely destination.
+ * section links stack at full tap size.
  */
 export function SiteHeader() {
   const pathname = usePathname();
@@ -67,23 +68,6 @@ export function SiteHeader() {
             </Link>
           ))}
 
-          <span
-            aria-hidden="true"
-            className="mx-2 h-5 w-px bg-border-subtle"
-          />
-
-          <Link
-            href="/login/student"
-            className="rounded border border-lgs-500 px-3.5 py-2 font-ui text-sm font-medium text-lgs-600 transition-colors hover:bg-lgs-50"
-          >
-            Student Login
-          </Link>
-          <Link
-            href="/login/admin"
-            className="ml-2 rounded bg-cell-ink px-3.5 py-2 font-ui text-sm font-medium text-white transition-colors hover:bg-cell-ink-deep"
-          >
-            Admin Login
-          </Link>
         </nav>
 
         {/* Mobile trigger */}
@@ -152,21 +136,6 @@ export function SiteHeader() {
               </li>
             ))}
           </ul>
-
-          <div className="mx-auto grid max-w-6xl gap-2 px-4 pt-1 pb-4 sm:px-6">
-            <Link
-              href="/login/student"
-              className="rounded border border-lgs-500 px-4 py-3 text-center font-ui text-sm font-medium text-lgs-600"
-            >
-              Student Login
-            </Link>
-            <Link
-              href="/login/admin"
-              className="rounded bg-cell-ink px-4 py-3 text-center font-ui text-sm font-medium text-white"
-            >
-              Admin Login
-            </Link>
-          </div>
         </nav>
       )}
     </header>

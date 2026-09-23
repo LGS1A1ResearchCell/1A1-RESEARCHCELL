@@ -46,3 +46,6 @@ next-env.d.ts
 # supabase local artefacts
 /supabase/.temp
 /supabase/.branches
+
+# Local verification scripts. Hold development credentials; never committed.
+/tests-local

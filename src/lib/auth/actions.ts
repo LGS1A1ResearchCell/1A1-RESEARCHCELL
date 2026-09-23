@@ -4,133 +4,98 @@ import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 
 import { createClient } from "@/lib/supabase/server";
-import { getSessionContext, homePathFor } from "@/lib/auth/session";
-import { joinYearOptions } from "@/lib/auth/years";
+import { cmsSecrets } from "@/lib/cms/secrets";
+import { verifyPassword } from "@/lib/cms/password";
 
 /**
- * Authentication server actions.
+ * Authentication for the private CMS.
  *
- * Note what is absent: the service-role client. Signing up goes through the
- * submit_account_request database function, which validates its own input and
- * is callable by anon; signing in goes through Supabase Auth. Neither needs
- * elevated rights, so neither gets them.
+ * There is one shared password and no individual accounts. Getting in is two
+ * steps, and they are deliberately distinct:
+ *
+ *   1. The password typed into the form is checked against CMS_PASSWORD_HASH.
+ *      That is the only secret anybody is told.
+ *   2. On success the server signs in to Supabase as a real account holding the
+ *      school_admin role, and the resulting session is stored in the existing
+ *      httpOnly cookie.
+ *
+ * Step 2 is the important one. It would be simpler to accept the password and
+ * then talk to the database with the service-role key, but that key ignores
+ * every Row Level Security policy in the schema — the CMS would become trusted
+ * code, and a mistake in any server action would become a whole-database
+ * mistake. Signing in as an ordinary account instead means the database keeps
+ * enforcing exactly what it enforced before, and the CMS is only a caller.
+ *
+ * The Supabase credentials are never shown to anyone and never leave the
+ * server; rotating the shared password does not touch them.
  */
 
 export type FormState = {
   ok: boolean;
   message?: string;
-  fieldErrors?: Record<string, string>;
 };
 
-const CLASS_SECTIONS = ["A1", "A2"] as const;
+/**
+ * A wrong password costs a fixed second before it answers.
+ *
+ * This is a speed bump, not rate limiting: it slows a naive script without
+ * meaningfully stopping a determined one, and on serverless it cannot keep
+ * state across instances. Real throttling belongs in front of the application —
+ * recorded as an open item in docs/HANDOVER.md rather than pretended at here.
+ */
+const WRONG_PASSWORD_DELAY_MS = 1000;
 
-// -----------------------------------------------------------------------------
-// Sign up
-// -----------------------------------------------------------------------------
-
-export async function submitAccountRequest(
+export async function signInToCms(
   _prev: FormState,
   formData: FormData,
 ): Promise<FormState> {
-  const fullName = String(formData.get("full_name") ?? "").trim();
-  const email = String(formData.get("email") ?? "").trim().toLowerCase();
-  const classSection = String(formData.get("class_section") ?? "");
-  const yearRaw = String(formData.get("year_joined") ?? "");
-  const yearJoined = Number.parseInt(yearRaw, 10);
-
-  const fieldErrors: Record<string, string> = {};
-  if (fullName.length < 2) fieldErrors.full_name = "Please enter your full name.";
-  if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email))
-    fieldErrors.email = "Please enter a valid email address.";
-  if (!CLASS_SECTIONS.includes(classSection as (typeof CLASS_SECTIONS)[number]))
-    fieldErrors.class_section = "Please select your class.";
-  if (!Number.isInteger(yearJoined) || !joinYearOptions().includes(yearJoined))
-    fieldErrors.year_joined = "Please select the year you joined.";
-
-  if (Object.keys(fieldErrors).length > 0) {
-    return { ok: false, fieldErrors };
-  }
-
-  const supabase = await createClient();
-  const { error } = await supabase.rpc("submit_account_request", {
-    p_full_name: fullName,
-    p_email: email,
-    p_class_section: classSection,
-    p_year_joined: yearJoined,
-  });
-
-  if (error) {
-    // Input-shape errors are safe to surface. Anything else is logged for the
-    // developer and shown to the visitor as a generic failure, so that a
-    // database message can never become an information leak.
-    if (error.code === "22023") {
-      return { ok: false, message: error.message };
-    }
-    console.error("submit_account_request failed:", error.code, error.message);
-    return {
-      ok: false,
-      message: "Something went wrong submitting your registration. Please try again.",
-    };
-  }
-
-  // The function returns void whether this created a request, matched an
-  // existing one, or matched an existing account. The visitor sees the same
-  // page either way, so the form cannot be used to discover who has registered.
-  redirect("/login/student/sign-up/submitted");
-}
-
-// -----------------------------------------------------------------------------
-// Sign in
-// -----------------------------------------------------------------------------
-
-export async function signIn(
-  _prev: FormState,
-  formData: FormData,
-): Promise<FormState> {
-  const email = String(formData.get("email") ?? "").trim().toLowerCase();
   const password = String(formData.get("password") ?? "");
 
-  if (!email || !password) {
-    return { ok: false, message: "Enter your email address and password." };
+  if (!password) {
+    return { ok: false, message: "Enter the management password." };
   }
 
-  const supabase = await createClient();
-  const { error } = await supabase.auth.signInWithPassword({ email, password });
-
-  if (error) {
-    // Deliberately uniform. A pending applicant has no auth user at all, so a
-    // failed sign-in is indistinguishable from a wrong password — which is the
-    // correct outcome for a public form. The hint below covers the pending case
-    // without confirming that any particular address exists.
+  let accepted = false;
+  try {
+    accepted = await verifyPassword(password, cmsSecrets.passwordHash());
+  } catch (error) {
+    // A missing or malformed CMS_PASSWORD_HASH is a deployment fault, not the
+    // visitor's. Say so plainly rather than implying they got it wrong.
+    console.error("CMS password check could not run:", error);
     return {
       ok: false,
       message:
-        "We could not sign you in. Check your email address and password. " +
-        "If you have registered and are waiting for approval, you will be " +
-        "emailed once your account is ready.",
+        "The management area is not configured on this deployment. " +
+        "Contact whoever maintains the site.",
     };
   }
 
-  const ctx = await getSessionContext();
-  if (!ctx) {
-    return { ok: false, message: "We could not sign you in. Please try again." };
+  if (!accepted) {
+    await new Promise((resolve) => setTimeout(resolve, WRONG_PASSWORD_DELAY_MS));
+    return { ok: false, message: "That password was not recognised." };
   }
 
-  // An account can exist and still not be usable. Signing out immediately keeps
-  // a suspended session from lingering in the browser.
-  if (!ctx.isActive) {
-    const path = homePathFor(ctx);
-    revalidatePath("/", "layout");
-    redirect(path);
+  const supabase = await createClient();
+  const { error } = await supabase.auth.signInWithPassword({
+    email: cmsSecrets.supabaseEmail(),
+    password: cmsSecrets.supabasePassword(),
+  });
+
+  if (error) {
+    // The password was right but the account behind the CMS is wrong or
+    // missing. Never surface which account, or why.
+    console.error("CMS sign-in failed:", error.message);
+    return {
+      ok: false,
+      message:
+        "The password was accepted but the management account could not be " +
+        "reached. Contact whoever maintains the site.",
+    };
   }
 
   revalidatePath("/", "layout");
-  redirect(homePathFor(ctx));
+  redirect("/admin");
 }
-
-// -----------------------------------------------------------------------------
-// Sign out
-// -----------------------------------------------------------------------------
 
 export async function signOut() {
   const supabase = await createClient();

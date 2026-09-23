@@ -1,4 +1,3 @@
-import { Portrait } from "@/components/people/Portrait";
 import { createClient } from "@/lib/supabase/server";
 
 export const metadata = { title: "People" };
@@ -30,9 +29,6 @@ const ROLE_TITLE: Record<string, string> = {
 
 type PersonBits = {
   full_name: string;
-  photo_path: string | null;
-  photo_focal_x: number;
-  photo_focal_y: number;
   quote: string | null;
 };
 
@@ -51,18 +47,18 @@ export default async function PeoplePage() {
       supabase
         .from("founding_contributors")
         .select(
-          "id, role_title, description, year, display_order, people(full_name, photo_path, photo_focal_x, photo_focal_y, quote)",
+          "id, role_title, description, year, display_order, people(full_name, quote)",
         )
         .order("display_order"),
       supabase
         .from("leadership")
         .select(
-          "id, role, academic_years(label, is_current), people(full_name, photo_path, photo_focal_x, photo_focal_y, quote)",
+          "id, role, academic_years(label, is_current), people(full_name, quote)",
         ),
       supabase
         .from("public_researchers")
         .select(
-          "id, full_name, slug, kind, class_section, year_joined, quote, photo_path, photo_focal_x, photo_focal_y, published_paper_count",
+          "id, full_name, slug, kind, class_section, year_joined, quote, published_paper_count",
         )
         .order("full_name"),
     ]);
@@ -106,13 +102,6 @@ export default async function PeoplePage() {
                   key={f.id}
                   className="flex gap-5 rounded-lg border border-border-subtle bg-surface p-5"
                 >
-                  <Portrait
-                    name={p?.full_name ?? "Unknown"}
-                    photoPath={p?.photo_path}
-                    focalX={Number(p?.photo_focal_x ?? 0.5)}
-                    focalY={Number(p?.photo_focal_y ?? 0.4)}
-                    size={88}
-                  />
                   <div className="min-w-0">
                     <p className="font-ui text-sm font-bold text-lgs-600">
                       {f.role_title}
@@ -150,15 +139,6 @@ export default async function PeoplePage() {
           <ul className="mt-8 grid gap-8 sm:grid-cols-2">
             {current.map((l) => (
               <li key={l.id} className="text-center">
-                <div className="flex justify-center">
-                  <Portrait
-                    name={l.people?.full_name ?? "Unknown"}
-                    photoPath={l.people?.photo_path}
-                    focalX={Number(l.people?.photo_focal_x ?? 0.5)}
-                    focalY={Number(l.people?.photo_focal_y ?? 0.4)}
-                    size={144}
-                  />
-                </div>
                 {/* Title above the name, bold, smaller, blue — as specified. */}
                 <p className="mt-4 font-ui text-sm font-bold text-lgs-600">
                   {ROLE_TITLE[l.role] ?? l.role}
@@ -227,13 +207,6 @@ export default async function PeoplePage() {
                 key={r.id}
                 className="flex gap-4 rounded-lg border border-border-subtle bg-surface p-4"
               >
-                <Portrait
-                  name={r.full_name}
-                  photoPath={r.photo_path}
-                  focalX={Number(r.photo_focal_x ?? 0.5)}
-                  focalY={Number(r.photo_focal_y ?? 0.4)}
-                  size={64}
-                />
                 <div className="min-w-0">
                   <h3 className="font-heading text-base font-bold text-ink-strong">
                     {r.full_name}

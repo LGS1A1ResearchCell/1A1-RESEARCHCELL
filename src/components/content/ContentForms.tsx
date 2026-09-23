@@ -5,8 +5,6 @@ import { useFormStatus } from "react-dom";
 
 import {
   deleteAnnouncement,
-  markAllNotificationsRead,
-  markNotificationRead,
   saveAnnouncement,
   saveResource,
   updateSiteContent,
@@ -295,35 +293,5 @@ export function ResourceEditor({ row }: { row: ResourceRow }) {
         </form>
       )}
     </li>
-  );
-}
-
-// -----------------------------------------------------------------------------
-
-export function MarkRead({ id }: { id: string }) {
-  const [, action] = useActionState(markNotificationRead, initial);
-  return (
-    <form action={action}>
-      <input type="hidden" name="notification_id" value={id} />
-      <button
-        type="submit"
-        className="rounded border border-border-subtle px-2.5 py-1 font-ui text-xs text-ink-body transition-colors hover:border-lgs-500 hover:text-lgs-600"
-      >
-        Mark as read
-      </button>
-    </form>
-  );
-}
-
-export function MarkAllRead() {
-  return (
-    <form action={markAllNotificationsRead}>
-      <button
-        type="submit"
-        className="rounded border border-border-subtle px-3 py-1.5 font-ui text-sm text-ink-body transition-colors hover:border-lgs-500 hover:text-lgs-600"
-      >
-        Mark all as read
-      </button>
-    </form>
   );
 }
