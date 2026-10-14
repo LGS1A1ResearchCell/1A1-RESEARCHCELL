@@ -299,27 +299,39 @@ export function ResearchEditor({
         )}
         <Notice state={removeState} />
 
-        <form action={addAuthor} className="mt-4 grid gap-3 sm:grid-cols-[1fr_10rem_auto] sm:items-end">
+        <form action={addAuthor} className="mt-4">
           <input type="hidden" name="research_id" value={record.id} />
-          <div>
-            <label htmlFor="full_name" className={labelClass}>
-              Add an author
-            </label>
-            <input id="full_name" name="full_name" required className={field} />
+          <div className="grid gap-3 sm:grid-cols-[1fr_10rem_auto] sm:items-end">
+            <div>
+              <label htmlFor="full_name" className={labelClass}>
+                Add an author
+              </label>
+              <input id="full_name" name="full_name" required className={field} />
+            </div>
+            <div>
+              <label htmlFor="kind" className="block font-ui text-xs text-ink-muted">
+                They are a
+              </label>
+              <select id="kind" name="kind" defaultValue="student" className={field}>
+                <option value="student">Student</option>
+                <option value="faculty">Faculty</option>
+                <option value="external">External</option>
+              </select>
+            </div>
+            <div className="pb-0.5">
+              <Busy label="Add" busy="Adding…" tone="quiet" />
+            </div>
           </div>
-          <div>
-            <label htmlFor="kind" className="block font-ui text-xs text-ink-muted">
-              They are a
-            </label>
-            <select id="kind" name="kind" defaultValue="student" className={field}>
-              <option value="student">Student</option>
-              <option value="faculty">Faculty</option>
-              <option value="external">External</option>
-            </select>
-          </div>
-          <div className="pb-0.5">
-            <Busy label="Add" busy="Adding…" tone="quiet" />
-          </div>
+
+          {/* An existing author record with the same name is reused, so one
+              person on three papers stays one record. When more than one author
+              record shares the name there is no way to tell which is meant, and
+              adding is refused rather than guessed — this is how you say "a
+              different person of the same name". */}
+          <label className="mt-3 flex min-h-11 items-center gap-2 font-ui text-sm text-ink-body">
+            <input type="checkbox" name="create_new" className="h-4 w-4" />
+            Record as a new author, even if the name already exists
+          </label>
         </form>
         <Notice state={authorState} />
       </section>

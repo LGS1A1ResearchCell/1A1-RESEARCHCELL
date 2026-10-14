@@ -257,6 +257,9 @@ export async function addResearchAuthor(
   const fullName = text(formData.get("full_name"));
   const kindRaw = String(formData.get("kind") ?? "student");
   const kind = ["student", "faculty", "external"].includes(kindRaw) ? kindRaw : "student";
+  // Set when the CMS has been told the name is ambiguous and has decided this
+  // paper means someone new.
+  const forceNew = formData.get("create_new") !== null;
 
   if (!id) return { ok: false, message: "Missing paper." };
   if (!fullName) {
@@ -265,22 +268,181 @@ export async function addResearchAuthor(
 
   const supabase = await createClient();
 
-  // An author is a person in the record, not an account. Reuse an existing
-  // person where the name already matches exactly, so adding the same author to
-  // a second paper does not duplicate them.
-  const { data: existing } = await supabase
-    .from("people")
+  // Everything that can be read is read before anything is written. Creating
+  // the person first and then finding that the paper has gone, or that the
+  // author list could not be read, would leave behind a person record that
+  // belongs to no paper and that nothing in the CMS lists.
+  //
+  // The paper first. A missing one fails the authorship insert on its foreign
+  // key, which is already past the point of no return.
+  const { data: paper, error: paperError } = await supabase
+    .from("research_projects")
     .select("id")
-    .eq("full_name", fullName)
+    .eq("id", id)
+    .maybeSingle();
+
+  if (paperError) {
+    console.error("addResearchAuthor paper:", paperError.code, paperError.message);
+    return {
+      ok: false,
+      message:
+        "This paper could not be read just now, so nothing was added. " +
+        "Try again in a moment.",
+    };
+  }
+  if (!paper) return { ok: false, message: "That paper no longer exists." };
+
+  // Reuse is deliberately narrow.
+  //
+  // An author record and a People-page member are different things that happen
+  // to share a table. Matching on name alone used to reach either, so naming an
+  // author who happened to share a name with a member bound the paper to that
+  // member — after which renaming the member silently rewrote the byline, and
+  // the member could no longer be deleted because they had become an author.
+  //
+  // So the search is limited to rows that are not members (status is null).
+  // A member with the same name is left alone and a separate author record is
+  // created, which is what "papers keep their own author records" means.
+  let personId: string | undefined;
+
+  if (!forceNew) {
+    // count is the true number of matching rows; the two rows fetched
+    // alongside it are only there to supply an id when there is exactly one.
+    // Two is enough to tell apart "none", "one" and "more than one", which is
+    // the whole decision being made here.
+    const { data: matches, error: lookupError, count } = await supabase
+      .from("people")
+      .select("id, full_name", { count: "exact" })
+      .eq("full_name", fullName)
+      .is("status", null)
+      .limit(2);
+
+    // A failed lookup is not an empty lookup. Treating it as one would create a
+    // second record for an author who already has one, and the first sign of it
+    // would be a duplicate name in a byline. There is no safe assumption to
+    // make about a question the database did not answer, so nothing is written.
+    if (lookupError) {
+      console.error("addResearchAuthor lookup:", lookupError.code, lookupError.message);
+      return {
+        ok: false,
+        message:
+          "Existing authors could not be checked just now, so nothing was added. " +
+          "Try again in a moment.",
+      };
+    }
+
+    const matchCount = count ?? matches?.length ?? 0;
+
+    if (matchCount > 1) {
+      // Nothing here can tell them apart — they differ only in rows this form
+      // cannot see. Picking one would attach the paper to a person chosen at
+      // random, so it refuses and says so.
+      return {
+        ok: false,
+        message:
+          `There are already ${matchCount} author records named "${fullName}", and ` +
+          "there is no way to tell from here which one this paper means. " +
+          "Tick \u201cRecord as a new author\u201d to add a separate record for this paper.",
+      };
+    }
+
+    if (matchCount === 1) {
+      const only = matches?.[0]?.id as string | undefined;
+      if (!only) {
+        // The count says one and the row did not arrive. Reusing nothing would
+        // silently create a duplicate, so this stops too.
+        console.error("addResearchAuthor lookup: count 1 but no row returned");
+        return {
+          ok: false,
+          message:
+            "Existing authors could not be checked just now, so nothing was added. " +
+            "Try again in a moment.",
+        };
+      }
+      // Exactly one author record by that name: the same author on another paper.
+      personId = only;
+    }
+  }
+
+  // A reused record may already be an author of this paper, which the
+  // (project_id, person_id) unique constraint forbids. Saying so here costs a
+  // read and nothing else; the insert below still handles the same collision,
+  // for a row that appears between this check and it.
+  if (personId) {
+    const { data: already, error: alreadyError } = await supabase
+      .from("research_authors")
+      .select("id")
+      .eq("project_id", id)
+      .eq("person_id", personId)
+      .maybeSingle();
+
+    if (alreadyError) {
+      console.error("addResearchAuthor existing:", alreadyError.code, alreadyError.message);
+      return {
+        ok: false,
+        message:
+          "The author list could not be read just now, so nothing was added. " +
+          "Try again in a moment.",
+      };
+    }
+    if (already) return { ok: false, message: "That author is already on this paper." };
+  }
+
+  // Where this author goes in the byline: after the last one.
+  //
+  // The highest order is read rather than the rows counted. Removing an author
+  // lowers the count, so a counted order would hand the next author a place
+  // another author already holds, and the two would then sort against each
+  // other arbitrarily in every byline.
+  //
+  // A failed read is not an empty paper. Falling back to 0 would put a new
+  // author ahead of the first one, which is the one thing about a byline that
+  // is not the CMS's to decide, so nothing is written.
+  const { data: last, error: orderError } = await supabase
+    .from("research_authors")
+    .select("author_order")
+    .eq("project_id", id)
+    .order("author_order", { ascending: false })
     .limit(1)
     .maybeSingle();
 
-  let personId = existing?.id as string | undefined;
+  if (orderError) {
+    console.error("addResearchAuthor order:", orderError.code, orderError.message);
+    return {
+      ok: false,
+      message:
+        "The author list could not be read just now, so nothing was added. " +
+        "Try again in a moment.",
+    };
+  }
+
+  const lastOrder = last?.author_order;
+  const nextOrder = typeof lastOrder === "number" ? lastOrder + 1 : 0;
+
+  // Reads done. From here on, rows are written.
+  //
+  // Two writes remain and the database has no transaction across them from
+  // here, so the second failing would leave the first behind. That window is
+  // narrowed by every check above and closed by the cleanup below, but it is
+  // not eliminated.
+  let createdPersonId: string | undefined;
 
   if (!personId) {
-    const { data: slug } = await supabase.rpc("generate_person_slug", {
+    // The slug is read, not written, so it is checked like the reads above.
+    // A null slug would be refused by the column anyway; refusing it here says
+    // what actually happened instead of reporting a constraint.
+    const { data: slug, error: slugError } = await supabase.rpc("generate_person_slug", {
       p_full_name: fullName,
     });
+    if (slugError || !slug) {
+      console.error("addResearchAuthor slug:", slugError?.code, slugError?.message);
+      return {
+        ok: false,
+        message:
+          "A record for that author could not be prepared just now, so nothing " +
+          "was added. Try again in a moment.",
+      };
+    }
     // is_public defaults to false. Naming someone as an author records them;
     // it does not put them on the public People page.
     const { data: created, error: personError } = await supabase
@@ -293,23 +455,43 @@ export async function addResearchAuthor(
       return { ok: false, message: "That author could not be added." };
     }
     personId = created.id;
+    createdPersonId = created.id;
   }
-
-  const { count } = await supabase
-    .from("research_authors")
-    .select("id", { count: "exact", head: true })
-    .eq("project_id", id);
 
   const { error } = await supabase.from("research_authors").insert({
     project_id: id,
     person_id: personId,
     author_role: "co_author",
-    author_order: count ?? 0,
+    author_order: nextOrder,
     confirmation_status: "confirmed",
     confirmed_at: new Date().toISOString(),
   });
 
   if (error) {
+    // The person record was created a moment ago for this authorship alone, so
+    // with the authorship refused it belongs to nothing. Removing it keeps a
+    // failed add from leaving a name in the people table that no paper and no
+    // page ever mentions.
+    //
+    // It is safe to attempt without further checks: the database refuses to
+    // delete anyone who is an author, is credited in a journal, or is a
+    // founder, so a row that turns out to be referenced after all survives
+    // this. If the delete fails the add has still failed, and the only cost is
+    // a record nothing points at, so the editor is told the same thing either
+    // way.
+    if (createdPersonId) {
+      const { error: cleanupError } = await supabase
+        .from("people")
+        .delete()
+        .eq("id", createdPersonId);
+      if (cleanupError) {
+        console.error(
+          "addResearchAuthor cleanup:", createdPersonId,
+          cleanupError.code, cleanupError.message,
+        );
+      }
+    }
+
     if (error.code === "23505") {
       return { ok: false, message: "That author is already on this paper." };
     }
