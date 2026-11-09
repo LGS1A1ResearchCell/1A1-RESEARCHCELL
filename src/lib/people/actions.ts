@@ -33,8 +33,13 @@ const text = (v: FormDataEntryValue | null) => {
   return s === "" ? null : s;
 };
 
-const STATUSES = ["student", "leadership"] as const;
-type Status = (typeof STATUSES)[number];
+/**
+ * The member_status values the database accepts. Only 'student' is written now
+ * that leadership is a position rather than a kind of person; 'leadership'
+ * remains in the enum because older rows may carry it and an enum value cannot
+ * be removed in place.
+ */
+type Status = "student" | "leadership";
 
 /**
  * The academic year is stored exactly as typed.
@@ -45,16 +50,16 @@ type Status = (typeof STATUSES)[number];
  */
 function readPerson(formData: FormData) {
   const fullName = text(formData.get("full_name"));
-  const statusRaw = String(formData.get("status") ?? "");
-  const status = STATUSES.includes(statusRaw as Status) ? (statusRaw as Status) : null;
   const academicYear = text(formData.get("academic_year_text"));
-  // A title is kept only for leadership. Sent by a student's form or crafted by
-  // hand, it is discarded here and refused by the database underneath.
-  const leadershipTitle = status === "leadership" ? text(formData.get("leadership_title")) : null;
+
+  // Everyone added here is an ordinary member for an academic year. Leadership
+  // is no longer a kind of person: it is a position held, recorded in
+  // leadership_positions, so there is nothing to choose on this form.
+  const status: Status = "student";
+  const leadershipTitle = null;
 
   const fieldErrors: Record<string, string> = {};
   if (!fullName) fieldErrors.full_name = "Enter the person's name.";
-  if (!status) fieldErrors.status = "Choose whether they are a student or leadership.";
   if (!academicYear) fieldErrors.academic_year_text = "Enter the academic year, as you want it shown.";
 
   return { fullName, status, academicYear, leadershipTitle, fieldErrors };
@@ -110,7 +115,13 @@ export async function updatePerson(
   const id = String(formData.get("person_id") ?? "");
   if (!id) return { ok: false, message: "Missing person." };
 
-  const { fullName, status, academicYear, leadershipTitle, fieldErrors } = readPerson(formData);
+  // Only the editable fields are read here. readPerson also returns a status of
+  // 'student' and a null leadership title, which are right for adding someone
+  // and wrong for editing: writing them would turn whoever is named in the
+  // request into a member. A person with no status is a byline on a paper, not
+  // a member of the Research Cell, and editing must not be able to make them
+  // one.
+  const { fullName, academicYear, fieldErrors } = readPerson(formData);
   if (Object.keys(fieldErrors).length) return { ok: false, fieldErrors };
 
   const supabase = await createClient();
@@ -118,11 +129,12 @@ export async function updatePerson(
     .from("people")
     .update({
       full_name: fullName,
-      status,
       academic_year_text: academicYear,
-      leadership_title: leadershipTitle,
     })
-    .eq("id", id);
+    .eq("id", id)
+    // The same rule as a filter, so a crafted person_id naming an author
+    // reaches no row at all rather than relying on the column list alone.
+    .not("status", "is", null);
 
   if (error) {
     console.error("updatePerson:", error.code, error.message);
@@ -188,10 +200,10 @@ export async function movePersonToPast(
   if (!id) return { ok: false, message: "Missing person." };
 
   const supabase = await createClient();
-  const { error } = await supabase
-    .from("people")
-    .update({ moved_to_past_at: new Date().toISOString() })
-    .eq("id", id);
+  // One call, one transaction: every leadership position the person holds is
+  // recorded in the history and vacated alongside the archive flag, or none of
+  // it happens. Doing it from here as separate writes could not promise that.
+  const { error } = await supabase.rpc("archive_person", { p_person: id });
 
   if (error) {
     console.error("movePersonToPast:", error.code, error.message);
@@ -225,10 +237,9 @@ export async function returnPersonToCurrent(
   if (!id) return { ok: false, message: "Missing person." };
 
   const supabase = await createClient();
-  const { error } = await supabase
-    .from("people")
-    .update({ moved_to_past_at: null })
-    .eq("id", id);
+  // Deliberately narrow: this clears the archive flag and nothing else. An
+  // appointment that ended stays ended — coming back is not being reappointed.
+  const { error } = await supabase.rpc("restore_person", { p_person: id });
 
   if (error) {
     console.error("returnPersonToCurrent:", error.code, error.message);
@@ -240,4 +251,171 @@ export async function returnPersonToCurrent(
   revalidatePath("/people");
   revalidatePath("/people/past");
   return { ok: true, message: "Returned to current." };
+}
+
+// -----------------------------------------------------------------------------
+// Leadership positions
+// -----------------------------------------------------------------------------
+
+/**
+ * Positions are records, not labels on a person.
+ *
+ * Every write here goes through a database function, and that is not a style
+ * choice: no client role holds INSERT, UPDATE or DELETE on either leadership
+ * table, so a direct write from this file would simply be refused. The
+ * functions are where the authorisation check lives and where the history of
+ * an appointment is recorded, which is the whole reason the privileges were
+ * taken away.
+ */
+
+const revalidateLeadership = () => {
+  revalidatePath("/admin/people");
+  revalidatePath("/people");
+  revalidatePath("/people/past");
+};
+
+export async function createLeadershipPosition(
+  _prev: PeopleFormState,
+  formData: FormData,
+): Promise<PeopleFormState> {
+  await requireSchoolAdmin();
+
+  const title = text(formData.get("title"));
+  const order = Number(formData.get("display_order") ?? 0);
+  if (!title) {
+    return { ok: false, fieldErrors: { title: "Give the position a title." } };
+  }
+
+  const supabase = await createClient();
+  const { error } = await supabase.rpc("create_leadership_position", {
+    p_title: title,
+    p_display_order: Number.isFinite(order) ? order : 0,
+  });
+
+  if (error) {
+    console.error("createLeadershipPosition:", error.code, error.message);
+    if (error.code === "42501" || error.code === "22023") {
+      return { ok: false, message: error.message };
+    }
+    return { ok: false, message: "That position could not be created." };
+  }
+
+  revalidateLeadership();
+  return { ok: true, message: `${title} added.` };
+}
+
+export async function updateLeadershipPosition(
+  _prev: PeopleFormState,
+  formData: FormData,
+): Promise<PeopleFormState> {
+  await requireSchoolAdmin();
+
+  const id = String(formData.get("position_id") ?? "");
+  const title = text(formData.get("title"));
+  const orderRaw = formData.get("display_order");
+  const order = orderRaw === null || orderRaw === "" ? null : Number(orderRaw);
+  if (!id) return { ok: false, message: "Missing position." };
+  if (!title) {
+    return { ok: false, fieldErrors: { title: "Give the position a title." } };
+  }
+
+  const supabase = await createClient();
+  const { error } = await supabase.rpc("update_leadership_position", {
+    p_position: id,
+    p_title: title,
+    p_display_order: order !== null && Number.isFinite(order) ? order : null,
+  });
+
+  if (error) {
+    console.error("updateLeadershipPosition:", error.code, error.message);
+    if (error.code === "42501" || error.code === "22023" || error.code === "P0002") {
+      return { ok: false, message: error.message };
+    }
+    return { ok: false, message: "That position could not be saved." };
+  }
+
+  revalidateLeadership();
+  return { ok: true, message: "Saved." };
+}
+
+export async function deleteLeadershipPosition(
+  _prev: PeopleFormState,
+  formData: FormData,
+): Promise<PeopleFormState> {
+  await requireSchoolAdmin();
+
+  const id = String(formData.get("position_id") ?? "");
+  if (!id) return { ok: false, message: "Missing position." };
+
+  const supabase = await createClient();
+  const { error } = await supabase.rpc("delete_leadership_position", { p_position: id });
+
+  if (error) {
+    console.error("deleteLeadershipPosition:", error.code, error.message);
+    // An occupied position is refused by the database, which explains why.
+    if (error.code === "42501" || error.code === "P0002") {
+      return { ok: false, message: error.message };
+    }
+    return { ok: false, message: "That position could not be removed." };
+  }
+
+  revalidateLeadership();
+  return { ok: true, message: "Position removed." };
+}
+
+export async function assignLeadershipPosition(
+  _prev: PeopleFormState,
+  formData: FormData,
+): Promise<PeopleFormState> {
+  await requireSchoolAdmin();
+
+  const id = String(formData.get("position_id") ?? "");
+  const personId = String(formData.get("person_id") ?? "");
+  if (!id) return { ok: false, message: "Missing position." };
+  if (!personId) {
+    return { ok: false, message: "Choose who holds this position." };
+  }
+
+  const supabase = await createClient();
+  // The academic year is left to the database, which takes the current one.
+  // It is never inferred from the person's own academic year.
+  const { error } = await supabase.rpc("assign_leadership_position", {
+    p_position: id,
+    p_person: personId,
+  });
+
+  if (error) {
+    console.error("assignLeadershipPosition:", error.code, error.message);
+    if (error.code === "42501" || error.code === "22023" || error.code === "P0002") {
+      return { ok: false, message: error.message };
+    }
+    return { ok: false, message: "That position could not be assigned." };
+  }
+
+  revalidateLeadership();
+  return { ok: true, message: "Assigned." };
+}
+
+export async function vacateLeadershipPosition(
+  _prev: PeopleFormState,
+  formData: FormData,
+): Promise<PeopleFormState> {
+  await requireSchoolAdmin();
+
+  const id = String(formData.get("position_id") ?? "");
+  if (!id) return { ok: false, message: "Missing position." };
+
+  const supabase = await createClient();
+  const { error } = await supabase.rpc("vacate_leadership_position", { p_position: id });
+
+  if (error) {
+    console.error("vacateLeadershipPosition:", error.code, error.message);
+    if (error.code === "42501" || error.code === "P0002") {
+      return { ok: false, message: error.message };
+    }
+    return { ok: false, message: "That position could not be vacated." };
+  }
+
+  revalidateLeadership();
+  return { ok: true, message: "Vacated. The appointment is in the history." };
 }

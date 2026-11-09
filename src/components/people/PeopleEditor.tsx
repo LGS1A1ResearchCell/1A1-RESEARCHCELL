@@ -73,10 +73,10 @@ function Busy({
 /**
  * The fields of a person, shared by the create form and each edit form.
  *
- * The leadership title appears only when the status is leadership, and it is
- * removed from the page rather than merely hidden — a hidden input would still
- * be submitted. The database refuses a title on a student regardless, so this
- * is about not asking a confusing question, not about enforcement.
+ * Two fields, because there are only two facts about an ordinary member: who
+ * they are and which academic year they belong to. Leadership is not a kind of
+ * person any more — it is a position held, managed in its own section — so
+ * there is no status to choose and no title to type here.
  */
 function PersonFields({
   person,
@@ -87,9 +87,6 @@ function PersonFields({
   idPrefix: string;
   errors: Record<string, string>;
 }) {
-  const [status, setStatus] = useState<string>(person?.status ?? "student");
-  const isLeadership = status === "leadership";
-
   return (
     <>
       <div>
@@ -113,25 +110,6 @@ function PersonFields({
       </div>
 
       <div className="mt-4 grid gap-4 sm:grid-cols-2">
-        <div>
-          <label htmlFor={`${idPrefix}-status`} className={labelClass}>
-            Status
-          </label>
-          <select
-            id={`${idPrefix}-status`}
-            name="status"
-            value={status}
-            onChange={(e) => setStatus(e.target.value)}
-            className={field}
-          >
-            <option value="student">Student</option>
-            <option value="leadership">Leadership</option>
-          </select>
-          {errors.status && (
-            <p className="mt-1 font-ui text-xs text-cell-coral-text">{errors.status}</p>
-          )}
-        </div>
-
         <div>
           <label htmlFor={`${idPrefix}-year`} className={labelClass}>
             Academic year
@@ -157,23 +135,6 @@ function PersonFields({
         </div>
       </div>
 
-      {isLeadership && (
-        <div className="mt-4">
-          <label htmlFor={`${idPrefix}-title`} className={labelClass}>
-            Leadership title
-          </label>
-          <input
-            id={`${idPrefix}-title`}
-            name="leadership_title"
-            defaultValue={person?.leadership_title ?? ""}
-            className={field}
-          />
-          <p className="mt-1 font-ui text-xs text-ink-muted">
-            Written by hand. There is no fixed list and no limit on how many
-            people hold a title.
-          </p>
-        </div>
-      )}
     </>
   );
 }

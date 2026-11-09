@@ -16,12 +16,16 @@ export const metadata = { title: "Past members" };
  * descending, which puts the most recent years first.
  */
 
-type PastRow = {
+/**
+ * Both tables render the same three things, so both sources are normalised to
+ * this before rendering. Past members come from past_people; past leadership
+ * comes from leadership_history, where each row is one appointment that ended.
+ */
+type TableRow = {
   id: string;
   full_name: string;
-  status: "student" | "leadership" | null;
-  leadership_title: string | null;
-  academic_year_text: string | null;
+  title: string | null;
+  year: string | null;
 };
 
 const th =
@@ -33,7 +37,7 @@ function PeopleTable({
   caption,
   withTitle,
 }: {
-  rows: PastRow[];
+  rows: TableRow[];
   caption: string;
   withTitle: boolean;
 }) {
@@ -62,8 +66,8 @@ function PeopleTable({
               <th scope="row" className={`${td} font-ui font-semibold text-ink-strong`}>
                 {p.full_name}
               </th>
-              {withTitle && <td className={td}>{p.leadership_title ?? "—"}</td>}
-              <td className={`${td} whitespace-nowrap`}>{p.academic_year_text ?? "—"}</td>
+              {withTitle && <td className={td}>{p.title ?? "—"}</td>}
+              <td className={`${td} whitespace-nowrap`}>{p.year ?? "—"}</td>
             </tr>
           ))}
         </tbody>
@@ -77,15 +81,42 @@ export default async function PastMembersPage() {
 
   // Ordering is done by the database on the stored string, so what decides the
   // order is exactly what the page displays.
-  const { data } = await supabase
-    .from("past_people")
-    .select("id, full_name, status, leadership_title, academic_year_text")
-    .order("academic_year_text", { ascending: false, nullsFirst: false })
-    .order("full_name");
+  const [{ data: members }, { data: appointments }] = await Promise.all([
+    supabase
+      .from("past_people")
+      .select("id, full_name, academic_year_text")
+      .order("academic_year_text", { ascending: false, nullsFirst: false })
+      .order("full_name"),
+    // One row per appointment that ended, with the title and year frozen as
+    // they were held. Someone who was both a member and a post-holder appears
+    // in both tables, recording two different facts about them.
+    supabase
+      .from("past_leadership")
+      .select("id, full_name, title, academic_year_label")
+      .order("academic_year_label", { ascending: false, nullsFirst: false })
+      .order("full_name"),
+  ]);
 
-  const all = (data ?? []) as PastRow[];
-  const pastLeadership = all.filter((p) => p.status === "leadership");
-  const pastMembers = all.filter((p) => p.status === "student");
+  const pastMembers: TableRow[] = (members ?? []).map((p) => ({
+    id: p.id,
+    full_name: p.full_name,
+    title: null,
+    year: p.academic_year_text,
+  }));
+
+  const pastLeadership: TableRow[] = (
+    (appointments ?? []) as {
+      id: string;
+      full_name: string;
+      title: string;
+      academic_year_label: string | null;
+    }[]
+  ).map((a) => ({
+    id: a.id,
+    full_name: a.full_name,
+    title: a.title,
+    year: a.academic_year_label,
+  }));
 
   return (
     <div className="mx-auto max-w-6xl px-4 py-16 sm:px-6 sm:py-20">

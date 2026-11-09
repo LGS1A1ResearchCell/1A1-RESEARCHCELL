@@ -44,10 +44,9 @@ export default async function ResourcesPage() {
     <div className="mx-auto max-w-6xl px-4 py-16 sm:px-6 sm:py-20">
       <header className="rule-notebook pt-8">
         <h1 className="font-heading text-3xl font-extrabold sm:text-4xl">Resources</h1>
-        <p className="mt-4 max-w-prose text-lg text-ink-body">
-          {intro ??
-            "Guidance, templates and referencing help for members of the Research Cell."}
-        </p>
+        {intro && (
+          <p className="mt-4 max-w-prose text-lg text-ink-body">{intro}</p>
+        )}
       </header>
 
       {list.length === 0 ? (
@@ -55,13 +54,6 @@ export default async function ResourcesPage() {
           <h2 className="font-heading text-lg font-bold text-ink-strong">
             Nothing published yet
           </h2>
-          <p className="mt-2 max-w-prose text-sm leading-relaxed text-ink-body">
-            The Research Cell&rsquo;s guidance, templates and referencing rules
-            are still being written. They are deliberately not filled in with
-            invented wording here &mdash; a guideline nobody has agreed to is
-            worse than none at all. This page fills in as the school approves
-            each document.
-          </p>
         </div>
       ) : (
         <div className="mt-12 space-y-14">

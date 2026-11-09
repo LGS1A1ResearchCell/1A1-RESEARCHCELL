@@ -13,7 +13,7 @@ import {
   type Credit,
   type JournalPaper,
 } from "@/components/journals/JournalBuilder";
-import { requireLeadership } from "@/lib/auth/session";
+import { requireSchoolAdmin } from "@/lib/auth/session";
 import { createClient } from "@/lib/supabase/server";
 
 export const metadata = { title: "Journal builder" };
@@ -30,7 +30,7 @@ export default async function JournalBuilderPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  const ctx = await requireLeadership();
+  const ctx = await requireSchoolAdmin();
   const supabase = await createClient();
 
   const { data: journal } = await supabase

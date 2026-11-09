@@ -7,68 +7,73 @@ export const metadata = { title: "People" };
 /**
  * The public People page.
  *
- * Four things, in the order the school asked for them: founders, current
- * leadership, current members, and a link to the past.
+ * Four things, in the order the school asked for them: founders and
+ * contributors, current leadership, current members, and a link to the past.
  *
- * Someone appears here because the Research Cell listed them — that is what
- * having a status means. A person recorded only so their name stays on a paper
- * is an author, not a member, and is not on this page; their name appears with
- * their research instead.
+ * The three are deliberately different kinds of record. A contributor is a
+ * permanent credit and not a member of anything — the Research Cell did not
+ * exist while some of them were at the school. Leadership is a position held,
+ * read from leadership_positions, so a vacant post is simply absent here. A
+ * member is someone the Research Cell listed for an academic year, which is
+ * what having a status means. And a person recorded only so their name stays
+ * on a paper is an author: they appear with their research, not here.
  */
 
 type FounderRow = {
   id: string;
   role_title: string;
   description: string | null;
-  year: number | null;
   people: { full_name: string } | null;
 };
 
-type PersonRow = {
+type MemberRow = {
   id: string;
   full_name: string;
-  status: "student" | "leadership" | null;
-  leadership_title: string | null;
   academic_year_text: string | null;
+};
+
+type LeadershipRow = {
+  id: string;
+  title: string;
+  full_name: string;
+  academic_year: string | null;
 };
 
 export default async function PeoplePage() {
   const supabase = await createClient();
 
-  const [{ data: founders }, { data: current }, { count: pastCount }] = await Promise.all([
-    supabase
-      .from("founding_contributors")
-      .select("id, role_title, description, year, display_order, people(full_name)")
-      .order("display_order"),
-    supabase
-      .from("current_people")
-      .select("id, full_name, status, leadership_title, academic_year_text")
-      .order("full_name"),
-    supabase.from("past_people").select("id", { count: "exact", head: true }),
-  ]);
+  const [{ data: founders }, { data: current }, { data: posts }, { count: pastCount }] =
+    await Promise.all([
+      supabase
+        .from("founding_contributors")
+        .select("id, role_title, description, display_order, people(full_name)")
+        .order("display_order"),
+      supabase
+        .from("current_people")
+        .select("id, full_name, academic_year_text")
+        .order("full_name"),
+      // Only filled positions are in this view, so a vacant one simply is not
+      // here. Nothing on the page has to know that a position exists unfilled.
+      supabase
+        .from("current_leadership")
+        .select("id, title, full_name, academic_year, display_order")
+        .order("display_order"),
+      supabase.from("past_people").select("id", { count: "exact", head: true }),
+    ]);
 
-  const all = (current ?? []) as PersonRow[];
-  const leadership = all.filter((p) => p.status === "leadership");
-  const members = all.filter((p) => p.status === "student");
+  const members = (current ?? []) as MemberRow[];
+  const leadership = (posts ?? []) as LeadershipRow[];
 
   return (
     <div className="mx-auto max-w-6xl px-4 py-16 sm:px-6 sm:py-20">
       <header className="rule-notebook pt-8">
         <h1 className="font-heading text-3xl font-extrabold sm:text-4xl">People</h1>
-        <p className="mt-4 max-w-prose text-lg text-ink-body">
-          The founders of the Research Cell, its current leadership, and its
-          current members.
-        </p>
       </header>
 
       <section className="mt-16" aria-labelledby="founders">
         <h2 id="founders" className="font-heading text-2xl font-bold text-ink-strong">
-          Founders
+          Founders and Contributors
         </h2>
-        <p className="mt-2 max-w-prose text-sm text-ink-body">
-          A permanent record. These contributions do not change with the
-          academic year.
-        </p>
 
         {(founders ?? []).length === 0 ? (
           <p className="mt-8 rounded-lg border border-dashed border-border-subtle bg-surface-muted p-8 text-center text-sm text-ink-muted">
@@ -78,10 +83,7 @@ export default async function PeoplePage() {
           <ul className="mt-8 grid gap-6 sm:grid-cols-2">
             {((founders ?? []) as unknown as FounderRow[]).map((f) => (
               <li key={f.id} className="rounded-lg border border-border-subtle bg-surface p-5">
-                <p className="font-ui text-sm font-bold text-lgs-600">
-                  {f.role_title}
-                  {f.year ? `, ${f.year}` : ""}
-                </p>
+                <p className="font-ui text-sm font-bold text-lgs-600">{f.role_title}</p>
                 <h3 className="mt-1 font-heading text-xl font-bold text-ink-strong">
                   {f.people?.full_name}
                 </h3>
@@ -108,14 +110,12 @@ export default async function PeoplePage() {
             {leadership.map((p) => (
               <li key={p.id} className="text-center">
                 {/* Title above the name, as the original design had it. */}
-                {p.leadership_title && (
-                  <p className="font-ui text-sm font-bold text-lgs-600">{p.leadership_title}</p>
-                )}
+                <p className="font-ui text-sm font-bold text-lgs-600">{p.title}</p>
                 <h3 className="mt-1 font-heading text-xl font-bold text-ink-strong">
                   {p.full_name}
                 </h3>
-                {p.academic_year_text && (
-                  <p className="mt-1 font-ui text-xs text-ink-muted">{p.academic_year_text}</p>
+                {p.academic_year && (
+                  <p className="mt-1 font-ui text-xs text-ink-muted">{p.academic_year}</p>
                 )}
               </li>
             ))}

@@ -1,5 +1,10 @@
 import Link from "next/link";
 
+import {
+  LeadershipPositions,
+  type Candidate,
+  type Position,
+} from "@/components/people/LeadershipPositions";
 import { NewPersonForm, PersonRow, type Person } from "@/components/people/PeopleEditor";
 import { requireSchoolAdmin } from "@/lib/auth/session";
 import { createClient } from "@/lib/supabase/server";
@@ -23,7 +28,13 @@ export default async function EditPeoplePage() {
   await requireSchoolAdmin();
   const supabase = await createClient();
 
-  const [{ data: people }, { data: founders }] = await Promise.all([
+  const [
+    { data: people },
+    { data: founders },
+    { data: positionRows },
+    { data: candidateRows },
+    { data: historyRows },
+  ] = await Promise.all([
     supabase
       .from("people")
       .select("id, full_name, status, leadership_title, academic_year_text, moved_to_past_at")
@@ -33,11 +44,56 @@ export default async function EditPeoplePage() {
       .from("founding_contributors")
       .select("id, role_title, year, display_order, people(full_name)")
       .order("display_order"),
+    // Vacant positions are needed here, so this reads the table rather than
+    // the public view, which returns only the filled ones.
+    supabase
+      .from("leadership_positions")
+      .select("id, title, display_order, person_id, people(full_name), academic_years(label)")
+      .order("display_order"),
+    // Anyone still current may hold a position, including a permanent
+    // contributor who is not a listed member.
+    supabase
+      .from("people")
+      .select("id, full_name")
+      .is("moved_to_past_at", null)
+      .order("full_name"),
+    supabase
+      .from("past_leadership")
+      .select("id, full_name, title, academic_year_label, ended_at")
+      .order("ended_at", { ascending: false }),
   ]);
 
+  const positions: Position[] = (
+    (positionRows ?? []) as unknown as {
+      id: string;
+      title: string;
+      display_order: number;
+      person_id: string | null;
+      people: { full_name: string } | null;
+      academic_years: { label: string } | null;
+    }[]
+  ).map((p) => ({
+    id: p.id,
+    title: p.title,
+    display_order: p.display_order,
+    person_id: p.person_id,
+    holder_name: p.people?.full_name ?? null,
+    academic_year: p.academic_years?.label ?? null,
+  }));
+
+  const candidates = (candidateRows ?? []) as Candidate[];
+  const history = (historyRows ?? []) as {
+    id: string;
+    full_name: string;
+    title: string;
+    academic_year_label: string | null;
+  }[];
+
+  const heldBy = new Set(positions.map((p) => p.person_id).filter(Boolean) as string[]);
+
   const all = (people ?? []) as Person[];
-  const currentLeadership = all.filter((p) => !p.moved_to_past_at && p.status === "leadership");
-  const currentMembers = all.filter((p) => !p.moved_to_past_at && p.status === "student");
+  // A position holder belongs under leadership, not in the member list as well.
+  const currentMembers = all.filter((p) => !p.moved_to_past_at && !heldBy.has(p.id));
   const past = all.filter((p) => p.moved_to_past_at);
 
   return (
@@ -66,20 +122,42 @@ export default async function EditPeoplePage() {
       {/* ------------------------------------------------------------------ */}
       <section className="mt-12" aria-labelledby="current-leadership">
         <h2 id="current-leadership" className="font-heading text-xl font-bold text-ink-strong">
-          Current leadership
+          Leadership positions
         </h2>
-        <p className="mt-1.5 text-sm text-ink-body">
-          {currentLeadership.length} {currentLeadership.length === 1 ? "person" : "people"}.
-          There is no limit on how many.
+        <p className="mt-1.5 max-w-prose text-sm text-ink-body">
+          {positions.length} {positions.length === 1 ? "position" : "positions"},{" "}
+          {positions.filter((p) => p.person_id).length} filled. Titles are yours to
+          write and there is no limit on how many positions there are. A vacant
+          position stays here and is left off the public page.
         </p>
-        {currentLeadership.length === 0 ? (
+        <LeadershipPositions positions={positions} candidates={candidates} />
+      </section>
+
+      {/* ------------------------------------------------------------------ */}
+      <section className="mt-12" aria-labelledby="leadership-history">
+        <h2 id="leadership-history" className="font-heading text-xl font-bold text-ink-strong">
+          Leadership history
+        </h2>
+        <p className="mt-1.5 max-w-prose text-sm text-ink-body">
+          Every appointment that has ended, recorded automatically when a
+          position changes hands or is vacated. It cannot be edited from here.
+        </p>
+        {history.length === 0 ? (
           <p className="mt-5 rounded-lg border border-dashed border-border-subtle p-8 text-center text-sm text-ink-muted">
-            Nobody has been added as leadership yet.
+            No appointments have ended yet.
           </p>
         ) : (
-          <ul className="mt-5 space-y-3">
-            {currentLeadership.map((p) => (
-              <PersonRow key={p.id} person={p} />
+          <ul className="mt-5 divide-y divide-border-subtle rounded-lg border border-border-subtle bg-surface">
+            {history.map((h) => (
+              <li key={h.id} className="flex flex-wrap items-baseline gap-x-3 px-4 py-3">
+                <span className="font-ui text-sm font-semibold text-ink-strong">
+                  {h.full_name}
+                </span>
+                <span className="font-ui text-sm text-lgs-600">{h.title}</span>
+                <span className="font-ui text-xs text-ink-muted">
+                  {h.academic_year_label ?? "—"}
+                </span>
+              </li>
             ))}
           </ul>
         )}

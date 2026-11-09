@@ -7,6 +7,7 @@ import {
   getSiteContent,
   settled,
 } from "@/lib/content/site-content";
+import { isProduction } from "@/lib/env";
 
 /**
  * Homepage.
@@ -205,20 +206,25 @@ export default async function HomePage() {
       {/* ---------------------------------------------------------------- */}
       {/* Development notice                                                */}
       {/* ---------------------------------------------------------------- */}
-      {/* Present so a development instance can never be mistaken for the
-          school's live site. Removed when the school approves publication. */}
-      <section className="mx-auto max-w-6xl px-4 pb-4 sm:px-6">
-        <div className="rounded border border-cell-coral/30 bg-cell-coral/5 p-4">
-          <p className="font-ui text-sm text-ink-body">
-            <span className="font-semibold text-ink-strong">
-              Development preview.
-            </span>{" "}
-            Content on this page is placeholder text awaiting approved wording.
-            Leadership, research and journal sections are connected to live data
-            in later phases.
-          </p>
-        </div>
-      </section>
+      {/* Present so a development or preview instance can never be mistaken
+          for the school's live site. Gated rather than deleted: the warning
+          still matters everywhere except production, and NEXT_PUBLIC_APP_ENV
+          is what distinguishes them. It is inlined at build time, so a build
+          either carries this notice or it does not. */}
+      {!isProduction && (
+        <section className="mx-auto max-w-6xl px-4 pb-4 sm:px-6">
+          <div className="rounded border border-cell-coral/30 bg-cell-coral/5 p-4">
+            <p className="font-ui text-sm text-ink-body">
+              <span className="font-semibold text-ink-strong">
+                Development preview.
+              </span>{" "}
+              Content on this page is placeholder text awaiting approved
+              wording. Leadership, research and journal sections are connected
+              to live data in later phases.
+            </p>
+          </div>
+        </section>
+      )}
     </>
   );
 }

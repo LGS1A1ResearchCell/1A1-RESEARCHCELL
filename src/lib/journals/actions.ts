@@ -4,16 +4,16 @@ import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 
 import { createClient } from "@/lib/supabase/server";
-import { requireLeadership, requireSchoolAdmin } from "@/lib/auth/session";
+import { requireSchoolAdmin } from "@/lib/auth/session";
 
 /**
  * The journal builder.
  *
- * No service-role client. Everything here is something leadership or School
- * Administration is genuinely entitled to do, so it runs through their own
- * session and the database decides whether it stands:
+ * No service-role client. Everything here is something School Administration
+ * is genuinely entitled to do, so it runs through its own session and the
+ * database decides whether it stands:
  *
- *   - only leadership may create or edit a journal
+ *   - only School Administration may create or edit a journal
  *   - only approved research may be added to one
  *   - a paper appears in one journal only
  *   - submitting for approval requires at least one paper
@@ -51,7 +51,7 @@ export async function createJournal(
   _prev: JournalFormState,
   formData: FormData,
 ): Promise<JournalFormState> {
-  const ctx = await requireLeadership();
+  const ctx = await requireSchoolAdmin();
 
   const title = String(formData.get("title") ?? "").trim();
   const volume = String(formData.get("volume_label") ?? "").trim();
@@ -105,7 +105,7 @@ export async function updateJournalDetails(
   _prev: JournalFormState,
   formData: FormData,
 ): Promise<JournalFormState> {
-  await requireLeadership();
+  await requireSchoolAdmin();
 
   const id = String(formData.get("journal_id") ?? "");
   const title = String(formData.get("title") ?? "").trim();
@@ -138,7 +138,7 @@ export async function addPaperToJournal(
   _prev: JournalFormState,
   formData: FormData,
 ): Promise<JournalFormState> {
-  await requireLeadership();
+  await requireSchoolAdmin();
 
   const journalId = String(formData.get("journal_id") ?? "");
   const projectId = String(formData.get("project_id") ?? "");
@@ -177,7 +177,7 @@ export async function removePaperFromJournal(
   _prev: JournalFormState,
   formData: FormData,
 ): Promise<JournalFormState> {
-  await requireLeadership();
+  await requireSchoolAdmin();
 
   const journalId = String(formData.get("journal_id") ?? "");
   const projectId = String(formData.get("project_id") ?? "");
@@ -204,7 +204,7 @@ export async function reorderPaper(
   _prev: JournalFormState,
   formData: FormData,
 ): Promise<JournalFormState> {
-  await requireLeadership();
+  await requireSchoolAdmin();
 
   const journalId = String(formData.get("journal_id") ?? "");
   const projectId = String(formData.get("project_id") ?? "");
@@ -256,7 +256,7 @@ export async function setPaperPages(
   _prev: JournalFormState,
   formData: FormData,
 ): Promise<JournalFormState> {
-  await requireLeadership();
+  await requireSchoolAdmin();
 
   const journalId = String(formData.get("journal_id") ?? "");
   const projectId = String(formData.get("project_id") ?? "");
@@ -297,7 +297,7 @@ export async function addJournalCredit(
   _prev: JournalFormState,
   formData: FormData,
 ): Promise<JournalFormState> {
-  await requireLeadership();
+  await requireSchoolAdmin();
 
   const journalId = String(formData.get("journal_id") ?? "");
   const personId = String(formData.get("person_id") ?? "");
@@ -335,7 +335,7 @@ export async function removeJournalCredit(
   _prev: JournalFormState,
   formData: FormData,
 ): Promise<JournalFormState> {
-  await requireLeadership();
+  await requireSchoolAdmin();
 
   const journalId = String(formData.get("journal_id") ?? "");
   const creditId = String(formData.get("credit_id") ?? "");
@@ -372,7 +372,7 @@ export async function uploadJournalAsset(
   _prev: JournalFormState,
   formData: FormData,
 ): Promise<JournalFormState> {
-  await requireLeadership();
+  await requireSchoolAdmin();
 
   const journalId = String(formData.get("journal_id") ?? "");
   const kind = String(formData.get("kind") ?? "");
@@ -455,7 +455,7 @@ export async function submitJournalForApproval(
   _prev: JournalFormState,
   formData: FormData,
 ): Promise<JournalFormState> {
-  await requireLeadership();
+  await requireSchoolAdmin();
 
   const id = String(formData.get("journal_id") ?? "");
   if (!id) return { ok: false, message: "Missing journal." };
@@ -481,7 +481,7 @@ export async function withdrawJournalSubmission(
   _prev: JournalFormState,
   formData: FormData,
 ): Promise<JournalFormState> {
-  await requireLeadership();
+  await requireSchoolAdmin();
 
   const id = String(formData.get("journal_id") ?? "");
   if (!id) return { ok: false, message: "Missing journal." };
@@ -548,7 +548,7 @@ export async function recordCorrection(
   _prev: JournalFormState,
   formData: FormData,
 ): Promise<JournalFormState> {
-  const ctx = await requireLeadership();
+  const ctx = await requireSchoolAdmin();
 
   const journalId = String(formData.get("journal_id") ?? "");
   const description = String(formData.get("description") ?? "").trim();

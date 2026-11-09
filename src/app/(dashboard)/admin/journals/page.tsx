@@ -1,7 +1,7 @@
 import Link from "next/link";
 
 import { CreateJournalForm } from "@/components/journals/CreateJournalForm";
-import { requireLeadership } from "@/lib/auth/session";
+import { requireSchoolAdmin } from "@/lib/auth/session";
 import { createClient } from "@/lib/supabase/server";
 
 export const metadata = { title: "Journals" };
@@ -13,7 +13,7 @@ const STATUS: Record<string, { label: string; tone: string }> = {
 };
 
 export default async function AdminJournalsPage() {
-  await requireLeadership();
+  await requireSchoolAdmin();
   const supabase = await createClient();
 
   const [{ data: journals }, { data: years }] = await Promise.all([
