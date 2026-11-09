@@ -49,3 +49,8 @@ next-env.d.ts
 
 # Local verification scripts. Hold development credentials; never committed.
 /tests-local
+
+# Local environment launcher. Names the Testing Supabase project and reads its
+# credentials from .env.testing.local, so it stays out of the repository — the
+# published history contains no Supabase project identifier and must not start.
+/scripts/use-testing-env.ps1
